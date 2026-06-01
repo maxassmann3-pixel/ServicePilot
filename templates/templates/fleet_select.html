@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Fuhrpark auswählen</h1>
+        <p>Wähle den Fuhrpark deines Unternehmens aus und gib das Fuhrpark-Passwort ein.</p>
+    </div>
+</div>
+
+<div class="card-grid">
+    {% for fid, fleet in fleets.items() %}
+    <div class="card">
+        <h2>{{ fleet.name }}</h2>
+
+        <form action="/join-fleet" method="post">
+            <input type="hidden" name="fleet_id" value="{{ fid }}">
+
+            <label>Fuhrpark-Passwort</label>
+            <input name="fleet_password" type="password" required>
+
+            <button class="btn">Fuhrpark betreten</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
