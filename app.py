@@ -1,14 +1,10 @@
 from flask import Flask, render_template, request, redirect, session
-import json
-import os
-import hashlib
-import time
-import secrets
+import json, os, hashlib, time, secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
-app.secret_key = "servicepilot_v17"
+app.secret_key = "servicepilot_v18"
 
 USERS_FILE = "users.json"
 DATA_FILE = "data.json"
@@ -35,69 +31,36 @@ DEFAULT_SETTINGS = {
 
 CHECKLISTS = {
     "machine": [
-        "Motorölstand geprüft",
-        "Motoröl gewechselt",
-        "Ölfilter gewechselt",
-        "Hydraulikölstand geprüft",
-        "Hydrauliköl gewechselt falls fällig",
-        "Hydraulikfilter geprüft / gewechselt",
-        "Kühlflüssigkeit geprüft",
-        "Luftfilter geprüft / gereinigt",
-        "Kraftstofffilter geprüft / gewechselt",
-        "Hydraulikleitungen auf Undichtigkeiten geprüft",
-        "Zylinder / Bolzen geprüft",
-        "Laufwerk / Ketten / Reifen geprüft",
-        "Maschine abgeschmiert",
-        "Beleuchtung geprüft",
-        "Scheiben / Spiegel geprüft",
+        "Motorölstand geprüft", "Motoröl gewechselt", "Ölfilter gewechselt",
+        "Hydraulikölstand geprüft", "Hydrauliköl gewechselt falls fällig",
+        "Hydraulikfilter geprüft / gewechselt", "Kühlflüssigkeit geprüft",
+        "Luftfilter geprüft / gereinigt", "Kraftstofffilter geprüft / gewechselt",
+        "Hydraulikleitungen auf Undichtigkeiten geprüft", "Zylinder / Bolzen geprüft",
+        "Laufwerk / Ketten / Reifen geprüft", "Maschine abgeschmiert",
+        "Beleuchtung geprüft", "Scheiben / Spiegel geprüft",
         "Anbaugerät / Schnellwechsler geprüft"
     ],
     "vehicle": [
-        "Motorölstand geprüft",
-        "Motoröl gewechselt",
-        "Ölfilter gewechselt",
-        "Kühlflüssigkeit geprüft",
-        "Bremsflüssigkeit geprüft",
-        "Scheibenwaschwasser aufgefüllt",
-        "Reifendruck geprüft",
-        "Reifenprofil geprüft",
-        "Beleuchtung geprüft",
-        "Bremsen geprüft",
-        "Innenraumfilter geprüft",
-        "Kraftstofffilter geprüft",
-        "TÜV / Kennzeichen geprüft",
-        "Warndreieck / Verbandkasten geprüft"
+        "Motorölstand geprüft", "Motoröl gewechselt", "Ölfilter gewechselt",
+        "Kühlflüssigkeit geprüft", "Bremsflüssigkeit geprüft",
+        "Scheibenwaschwasser aufgefüllt", "Reifendruck geprüft",
+        "Reifenprofil geprüft", "Beleuchtung geprüft", "Bremsen geprüft",
+        "Innenraumfilter geprüft", "Kraftstofffilter geprüft",
+        "TÜV / Kennzeichen geprüft", "Warndreieck / Verbandkasten geprüft"
     ],
     "trailer": [
-        "Reifen geprüft",
-        "Reifendruck geprüft",
-        "Beleuchtung geprüft",
-        "Stecker / Kabel geprüft",
-        "Kupplung geprüft",
-        "Auflaufbremse geprüft",
-        "Handbremse geprüft",
-        "Radlager geprüft",
-        "Rahmen / Aufbau geprüft",
-        "Ladefläche geprüft",
-        "Zurrpunkte geprüft",
-        "Schmierstellen abgeschmiert",
-        "Hydrauliköl geprüft falls vorhanden",
-        "TÜV / Kennzeichen geprüft"
+        "Reifen geprüft", "Reifendruck geprüft", "Beleuchtung geprüft",
+        "Stecker / Kabel geprüft", "Kupplung geprüft", "Auflaufbremse geprüft",
+        "Handbremse geprüft", "Radlager geprüft", "Rahmen / Aufbau geprüft",
+        "Ladefläche geprüft", "Zurrpunkte geprüft", "Schmierstellen abgeschmiert",
+        "Hydrauliköl geprüft falls vorhanden", "TÜV / Kennzeichen geprüft"
     ],
     "small_device": [
-        "Motoröl geprüft",
-        "Motoröl gewechselt falls nötig",
-        "Kraftstoff geprüft",
-        "Luftfilter gereinigt / gewechselt",
-        "Zündkerze geprüft / gewechselt",
-        "Kraftstofffilter geprüft",
-        "Kette / Messer / Trennscheibe geprüft",
-        "Schutzhaube geprüft",
-        "Griffe / Gashebel geprüft",
-        "Starter geprüft",
-        "Getriebe / Schmierung geprüft",
-        "Gerät gereinigt",
-        "Schrauben / Muttern geprüft"
+        "Motoröl geprüft", "Motoröl gewechselt falls nötig", "Kraftstoff geprüft",
+        "Luftfilter gereinigt / gewechselt", "Zündkerze geprüft / gewechselt",
+        "Kraftstofffilter geprüft", "Kette / Messer / Trennscheibe geprüft",
+        "Schutzhaube geprüft", "Griffe / Gashebel geprüft", "Starter geprüft",
+        "Getriebe / Schmierung geprüft", "Gerät gereinigt", "Schrauben / Muttern geprüft"
     ]
 }
 
@@ -650,7 +613,20 @@ def reports():
 
     if request.method == "POST":
         machine_id = request.form["machine_id"]
-        new_value = float(request.form["new_value"])
+
+        new_value_input = request.form.get("new_value", "").strip()
+        approx_value_input = request.form.get("approx_value", "").strip()
+
+        if not new_value_input and not approx_value_input:
+            return "Bitte exakten oder ungefähren Stand eintragen."
+
+        if new_value_input:
+            new_value = float(new_value_input)
+            value_type = "exakt"
+        else:
+            new_value = float(approx_value_input)
+            value_type = "ungefähr"
+
         note = request.form["note"]
         priority = request.form["priority"]
 
@@ -681,12 +657,14 @@ def reports():
                         "location": final_location,
                         "independent": independent,
                         "created_by": current_user(),
-                        "created_at": now_str()
+                        "created_at": now_str(),
+                        "value_type": value_type
                     })
 
                 machine["history"].append({
                     "user": current_user(),
                     "new_value": new_value,
+                    "value_type": value_type,
                     "note": note,
                     "priority": priority,
                     "old_location": old_location,
@@ -697,7 +675,7 @@ def reports():
 
                 log_action(
                     "Tagesbericht",
-                    f"{machine['name']} | Stand: {old_value} → {new_value} | Standort: {old_location} → {final_location} | Notiz: {note}"
+                    f"{machine['name']} | Stand: {old_value} → {new_value} ({value_type}) | Standort: {old_location} → {final_location} | Notiz: {note}"
                 )
 
                 break

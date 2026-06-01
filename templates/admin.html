@@ -5,34 +5,176 @@
 <div class="header">
     <div>
         <h1>Admin-Dashboard</h1>
-        <p>Alle Systemdaten, Änderungen und Benutzeraktivitäten.</p>
+        <p>Fuhrparke, Passwörter, Userrechte, Rollen und Aktivitäten verwalten.</p>
     </div>
-</div>
-
-<div class="card-grid">
-
-    <div class="card">
-        <h3>Gesamte Einträge</h3>
-        <div class="card-number">{{ all_machines|length }}</div>
-    </div>
-
-    <div class="card">
-        <h3>Aktivitäten</h3>
-        <div class="card-number">{{ logs|length }}</div>
-    </div>
-
-    <div class="card">
-        <h3>Fuhrpark</h3>
-        <div class="card-number" style="font-size:22px;">{{ fleet_name }}</div>
-    </div>
-
 </div>
 
 <div class="card">
-    <h2>Alle aktuellen Einträge</h2>
+    <h2>Fuhrpark anlegen</h2>
+
+    <form method="post">
+        <input type="hidden" name="action" value="create_fleet">
+
+        <label>Fuhrparkname</label>
+        <input name="fleet_name" placeholder="z. B. Firma Müller Bau" required>
+
+        <label>Passwort festlegen</label>
+        <input name="fleet_password" type="password" placeholder="Fuhrpark-Passwort" required>
+
+        <button class="btn">Fuhrpark anlegen</button>
+    </form>
+</div>
+
+<br>
+
+<div class="card-grid">
+    {% for fid, fleet in fleets.items() %}
+    <div class="card">
+        <h2>{{ fleet.name }}</h2>
+
+        <form method="post">
+            <input type="hidden" name="action" value="update_fleet">
+            <input type="hidden" name="fleet_id" value="{{ fid }}">
+
+            <label>Fuhrparkname ändern</label>
+            <input name="fleet_name" value="{{ fleet.name }}" required>
+
+            <label>Passwort festlegen / ändern</label>
+            <input name="fleet_password" type="password" placeholder="Leer lassen = altes Passwort bleibt">
+
+            <button class="btn btn-small">Fuhrpark speichern</button>
+        </form>
+
+        <br>
+
+        <form action="/delete-all" method="post">
+            <input type="hidden" name="fleet_id" value="{{ fid }}">
+            <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort" required>
+            <button class="btn btn-red btn-small">Alle Maschinen dieses Fuhrparks löschen</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+<br>
+
+<div class="card">
+    <h2>Userverwaltung</h2>
 
     <div class="machine-card-grid">
-        {% for m in all_machines %}
+        {% for username, pw in users.items() %}
+        {% set meta = user_meta.get(username, {}) %}
+        {% set perms = meta.get("permissions", {}) %}
+
+        <div class="machine-card">
+            <div class="machine-card-body">
+                <h3>{{ username }}</h3>
+
+                <p>
+                    Rolle:
+                    {% if meta.get("role") == "Eigene Rolle" and meta.get("custom_role") %}
+                        {{ meta.get("custom_role") }}
+                    {% else %}
+                        {{ meta.get("role", "Baustelle") }}
+                    {% endif %}
+                </p>
+
+                <form method="post">
+                    <input type="hidden" name="action" value="update_user">
+                    <input type="hidden" name="username" value="{{ username }}">
+
+                    <label>Feste Rolle</label>
+                    <select name="role">
+                        <option value="Baustelle" {% if meta.get("role") == "Baustelle" %}selected{% endif %}>Baustelle</option>
+                        <option value="Werkstatt" {% if meta.get("role") == "Werkstatt" %}selected{% endif %}>Werkstatt</option>
+                        <option value="Eigene Rolle" {% if meta.get("role") == "Eigene Rolle" %}selected{% endif %}>Eigene Rolle</option>
+                    </select>
+
+                    <label>Eigene Rolle</label>
+                    <input name="custom_role" value="{{ meta.get('custom_role', '') }}" placeholder="z. B. Vorarbeiter, Fahrer, Externer">
+
+                    <div class="checkbox-row">
+                        <input type="checkbox" name="create_machines" {% if perms.get("create_machines") %}checked{% endif %}>
+                        <label>Maschinen anlegen</label>
+                    </div>
+
+                    <div class="checkbox-row">
+                        <input type="checkbox" name="send_reports" {% if perms.get("send_reports") %}checked{% endif %}>
+                        <label>Tagesberichte senden</label>
+                    </div>
+
+                    <div class="checkbox-row">
+                        <input type="checkbox" name="do_service" {% if perms.get("do_service") %}checked{% endif %}>
+                        <label>Service durchführen</label>
+                    </div>
+
+                    <button class="btn btn-small">Userrechte speichern</button>
+                </form>
+
+                <br>
+
+                <form method="post">
+                    <input type="hidden" name="action" value="force_logout">
+                    <input type="hidden" name="username" value="{{ username }}">
+                    <button class="btn btn-red btn-small">User rauswerfen</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<br>
+
+<div class="card">
+    <h2>Aktivitäten nach User filtern</h2>
+
+    <form method="get" action="/admin" class="filter-box">
+        <select name="user">
+            <option value="">Alle User anzeigen</option>
+
+            {% for username, pw in users.items() %}
+            <option value="{{ username }}" {% if filter_user == username %}selected{% endif %}>
+                {{ username }}
+            </option>
+            {% endfor %}
+
+            <option value="Admin" {% if filter_user == "Admin" %}selected{% endif %}>
+                Admin
+            </option>
+        </select>
+
+        <button class="btn">Verlauf anzeigen</button>
+    </form>
+</div>
+
+<br>
+
+<div class="card">
+    <h2>Aktivitätsverlauf</h2>
+
+    {% for log in logs %}
+    <div class="admin-log-card">
+        <strong>{{ log.time }} – {{ log.user }}</strong>
+        <div>{{ log.action }}</div>
+        <div class="admin-detail">
+            Fuhrpark: {{ log.fleet_name }}<br>
+            {{ log.details }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<br>
+
+<div class="card">
+    <h2>Alle Fuhrparkdaten</h2>
+
+    {% for fid, machines in all_data.items() %}
+    <h3>{{ fleets.get(fid, {}).get("name", fid) }}</h3>
+
+    <div class="machine-card-grid">
+        {% for m in machines %}
         <div class="machine-card">
             <img src="{{ m.image_url }}">
 
@@ -48,19 +190,8 @@
         </div>
         {% endfor %}
     </div>
-</div>
 
-<br>
-
-<div class="card">
-    <h2>Aktivitätsprotokoll</h2>
-
-    {% for log in logs %}
-    <div class="admin-log-card">
-        <strong>{{ log.time }} – {{ log.user }}</strong>
-        <div>{{ log.action }}</div>
-        <div class="admin-detail">{{ log.details }}</div>
-    </div>
+    <br>
     {% endfor %}
 </div>
 
