@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServicePilot Login</title>
+
+    <link rel="icon" href="/static/img/favicon.ico">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+<div id="splash">
+    <img src="/static/img/servicepilot_logo.png">
+</div>
+
+<div class="login-wrapper">
+    <div class="login-card">
+
+        <img class="login-logo" src="/static/img/servicepilot_logo.png">
+
+        <h2 style="text-align:center;margin-bottom:20px;">Digitaler Wartungsmanager</h2>
+
+        <form action="/login" method="post">
+            <input name="username" placeholder="Benutzername" required>
+            <input name="password" type="password" placeholder="Passwort" required>
+            <button class="btn" style="width:100%;">Einloggen</button>
+        </form>
+
+        <br>
+
+        <form action="/admin-login" method="post">
+            <input name="admin_password" type="password" placeholder="Admin-Passwort">
+            <button class="btn btn-red" style="width:100%;">Admin Login</button>
+        </form>
+
+        <br>
+
+        <a href="/register" style="color:#6eaaff;text-decoration:none;">
+            Noch keinen Account? Registrieren
+        </a>
+
+    </div>
+</div>
+
+<script src="/static/js/main.js"></script>
+
+</body>
+</html>

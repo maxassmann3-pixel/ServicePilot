@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Tagesbericht (Mitarbeiter)</h1>
+        <p>Aktuellen Stand, Standort und Mängel erfassen.</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Neuer Tagesbericht</h2>
+
+    <form method="post">
+
+        <label>Maschine auswählen</label>
+        <select name="machine_id" id="machineSelect" required onchange="showCurrentLocation()">
+            {% for m in machines %}
+            <option
+                value="{{ m.id }}"
+                data-location="{% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}">
+                {{ m.name }} — aktuell {{ m.current_value }} {{ m.unit }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <div class="card" style="margin-bottom:16px;">
+            <strong>Aktueller Standort:</strong>
+            <span id="currentLocationDisplay">—</span>
+        </div>
+
+        <label>Aktuelle Betriebsstunden / Kilometerstand</label>
+        <input name="new_value" type="number" step="0.1" placeholder="Aktuellen Stand eintragen" required>
+
+        <label>Standort bleibt / aktueller Standort</label>
+        <select name="selected_location">
+            {% for loc in locations %}
+            <option value="{{ loc }}">{{ loc }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="checkbox-row">
+            <input type="checkbox" name="location_change" id="location_change" onclick="toggleLocationChange()">
+            <label>Standortwechsel</label>
+        </div>
+
+        <div id="location-change-box" style="display:none;">
+
+            <label>zu</label>
+            <select name="new_location_select">
+                {% for loc in locations %}
+                <option value="{{ loc }}">{{ loc }}</option>
+                {% endfor %}
+            </select>
+
+            <label>oder neuen Standort eintragen</label>
+            <input name="new_location_text" placeholder="Neuer Standort, z. B. Baustelle Süd">
+
+        </div>
+
+        <div class="checkbox-row">
+            <input type="checkbox" name="independent">
+            <label>ortsunabhängig</label>
+        </div>
+
+        <label>Mangel / Notiz</label>
+        <textarea name="note" placeholder="Einzelner Mangel / Notiz"></textarea>
+
+        <label>Priorität</label>
+        <select name="priority" required>
+            <option value="green">🟢 Grün – OK / Hinweis</option>
+            <option value="yellow">🟡 Gelb – Achtung</option>
+            <option value="red">🔴 Rot – dringend beheben</option>
+        </select>
+
+        <button class="btn">Tagesbericht speichern</button>
+    </form>
+</div>
+
+<script>
+function showCurrentLocation(){
+    const select = document.getElementById("machineSelect");
+    const display = document.getElementById("currentLocationDisplay");
+
+    if(select && display){
+        const selectedOption = select.options[select.selectedIndex];
+        display.textContent = selectedOption.dataset.location || "—";
+    }
+}
+
+window.addEventListener("load", function(){
+    showCurrentLocation();
+});
+</script>
+
+{% endblock %}

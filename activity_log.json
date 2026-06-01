@@ -1,0 +1,154 @@
+[
+    {
+        "time": "01.06.2026 13:08:42",
+        "user": "Max",
+        "action": "Tagesbericht",
+        "details": "Rüttler 500kg | Stand: 362.4 → 380.0 | Standort: Rüttihof → - | Notiz:  | Priorität: green"
+    },
+    {
+        "time": "01.06.2026 13:08:20",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 13:08:12",
+        "user": "Admin",
+        "action": "Logout",
+        "details": "Benutzer hat sich abgemeldet."
+    },
+    {
+        "time": "01.06.2026 13:07:57",
+        "user": "Admin",
+        "action": "Tagesbericht",
+        "details": "Zeppelin Radlader | Stand: 12943.5 → 13084.0 | Standort: Landgasthof → Rüttihof | Notiz:  | Priorität: green"
+    },
+    {
+        "time": "01.06.2026 13:06:49",
+        "user": "Admin",
+        "action": "Service erledigt",
+        "details": "Stihl MS 462 | Intervall: 100.0 → 150.0 | erledigte Notizen: 0 von 0 | Checkliste: Kraftstoff geprüft, Luftfilter gereinigt / gewechselt, Zündkerze geprüft / gewechselt, Kraftstofffilter geprüft, Kette / Messer / Trennscheibe geprüft, Schutzhaube geprüft, Griffe / Gashebel geprüft, Starter geprüft, Getriebe / Schmierung geprüft, Gerät gereinigt, Schrauben / Muttern geprüft"
+    },
+    {
+        "time": "01.06.2026 13:05:28",
+        "user": "Admin",
+        "action": "Admin-Login",
+        "details": "Admin hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 12:57:04",
+        "user": "Admin",
+        "action": "Admin-Login",
+        "details": "Admin hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 12:55:35",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 12:52:29",
+        "user": "Max",
+        "action": "Logout",
+        "details": "Benutzer hat sich abgemeldet."
+    },
+    {
+        "time": "01.06.2026 12:52:21",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 12:50:48",
+        "user": "Admin",
+        "action": "Admin-Login",
+        "details": "Admin hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 12:50:43",
+        "user": "Max",
+        "action": "Logout",
+        "details": "Benutzer hat sich abgemeldet."
+    },
+    {
+        "time": "01.06.2026 12:50:14",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 12:40:35",
+        "user": "Admin",
+        "action": "Admin-Login",
+        "details": "Admin hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 12:40:15",
+        "user": "Max",
+        "action": "Service erledigt",
+        "details": "Maschine: Stihl MS 342, Intervall vorher: 400.0, Erhöhung: 50.0, Intervall neu: 450.0, erledigte Notizen: 0 von 0, geprüfte Punkte: Motoröl geprüft, Kraftstoff geprüft, Luftfilter geprüft, Zündkerze geprüft, Schneidwerkzeug geprüft"
+    },
+    {
+        "time": "01.06.2026 11:48:52",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 11:41:09",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 11:32:12",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 11:28:09",
+        "user": "Admin",
+        "action": "Admin-Login",
+        "details": "Admin hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 11:27:57",
+        "user": "Max",
+        "action": "Service erledigt",
+        "details": "Maschine: Viking Rasenmähertraktor, Intervall vorher: 500.0, Erhöhung: 50.0, Intervall neu: 550.0, erledigte Notizen: 1 von 1, geprüfte Punkte: Motoröl geprüft, Kraftstoff geprüft, Luftfilter geprüft, Zündkerze geprüft, Schneidwerkzeug geprüft, Schutzhaube geprüft, Starter geprüft, Gerät gereinigt"
+    },
+    {
+        "time": "01.06.2026 11:27:21",
+        "user": "Max",
+        "action": "Tagesbericht gespeichert",
+        "details": "Maschine: Viking Rasenmähertraktor, alter Stand: 473.4, neuer Stand: 498.5, alter Standort: Scheune Schmidt, neuer Standort: -, Notiz: Messer stumpf, Priorität: red"
+    },
+    {
+        "time": "01.06.2026 11:26:08",
+        "user": "Max",
+        "action": "Login",
+        "details": "Normaler Benutzer hat sich angemeldet."
+    },
+    {
+        "time": "01.06.2026 11:17:11",
+        "user": "Admin",
+        "action": "hat sich im Admin-Modus angemeldet"
+    },
+    {
+        "time": "01.06.2026 11:17:01",
+        "user": "Max",
+        "action": "hat Einstellungen geändert"
+    },
+    {
+        "time": "01.06.2026 11:16:55",
+        "user": "Max",
+        "action": "hat Einstellungen geändert"
+    },
+    {
+        "time": "01.06.2026 11:16:36",
+        "user": "Max",
+        "action": "hat sich angemeldet"
+    }
+]

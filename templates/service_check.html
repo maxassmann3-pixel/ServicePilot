@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Service-Checkliste</h1>
+        <p>{{ machine.name }} prüfen und Service abschließen.</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Fahrzeugdaten</h2>
+
+    <p><strong>Kategorie:</strong> {{ machine.type_name }}</p>
+    <p><strong>Aktueller Stand:</strong> {{ machine.current_value }} {{ machine.unit }}</p>
+    <p><strong>Rest bis Service:</strong> {{ machine.rest }} {{ machine.unit }}</p>
+    <p><strong>Verantwortlicher:</strong> {{ machine.responsible }}</p>
+
+    <p>
+        <strong>Standort:</strong>
+        {% if machine.independent %}
+            ortsunabhängig
+        {% else %}
+            {{ machine.current_location }}
+        {% endif %}
+    </p>
+</div>
+
+<br>
+
+<form action="/service-done/{{ machine.id }}" method="post">
+
+    <div class="card">
+        <h2>Offene Notizen / Mängel</h2>
+
+        {% if machine.notes %}
+
+            {% for n in machine.notes %}
+
+                <div class="note-box">
+
+                    {% if n.priority == "red" %}
+                        <strong class="status-red">🔴 Dringend</strong>
+                    {% elif n.priority == "yellow" %}
+                        <strong class="status-yellow">🟡 Achtung</strong>
+                    {% else %}
+                        <strong class="status-green">🟢 Hinweis</strong>
+                    {% endif %}
+
+                    <p>{{ n.text }}</p>
+                    <small>Standort: {{ n.location }}</small>
+
+                    <br><br>
+
+                    <div class="checkbox-row">
+                        <input type="checkbox" name="resolved_notes" value="{{ loop.index0 }}">
+                        <label>behoben</label>
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            <p>Keine offenen Notizen vorhanden.</p>
+
+        {% endif %}
+    </div>
+
+    <br>
+
+    <div class="card">
+        <h2>Wartungscheckliste</h2>
+
+        <div class="checklist-grid">
+
+            {% for item in checklist %}
+
+                <div class="check-item">
+                    <input type="checkbox" name="checklist" value="{{ item }}">
+                    <label>{{ item }}</label>
+                </div>
+
+            {% endfor %}
+
+        </div>
+    </div>
+
+    <br>
+
+    <div class="card">
+        <h2>Neue Notiz eintragen</h2>
+
+        <textarea name="new_note" placeholder="Optional neue Notiz eintragen"></textarea>
+
+        <label>Priorität</label>
+        <select name="new_note_priority">
+            <option value="green">🟢 Grün – Hinweis</option>
+            <option value="yellow">🟡 Gelb – Achtung</option>
+            <option value="red">🔴 Rot – dringend</option>
+        </select>
+
+        <button class="btn">Service endgültig abschließen</button>
+    </div>
+
+</form>
+
+{% endblock %}

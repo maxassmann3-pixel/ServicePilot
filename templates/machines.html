@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Maschinenverwaltung</h1>
+    </div>
+</div>
+
+<div class="card">
+
+    {% if edit_machine %}
+        <h2>Eintrag bearbeiten</h2>
+        <form method="post" action="/edit-machine/{{ edit_machine.id }}">
+    {% else %}
+        <h2>Neuen Eintrag anlegen</h2>
+        <form method="post">
+    {% endif %}
+
+        <label>Kategorie</label>
+        <select name="type" id="typeSelect" onchange="updateTypeFields()" required>
+            <option value="machine" {% if edit_machine and edit_machine.type == "machine" %}selected{% endif %}>Baumaschine – Betriebsstunden</option>
+            <option value="vehicle" {% if edit_machine and edit_machine.type == "vehicle" %}selected{% endif %}>Fahrzeug – Kilometer</option>
+            <option value="trailer" {% if edit_machine and edit_machine.type == "trailer" %}selected{% endif %}>Gerät / Anhänger</option>
+            <option value="small_device" {% if edit_machine and edit_machine.type == "small_device" %}selected{% endif %}>Kleingerät</option>
+        </select>
+
+        <label>Name</label>
+        <input name="name" required value="{{ edit_machine.name if edit_machine else '' }}">
+
+        <div id="vehicleFields">
+            <label>Kennzeichen</label>
+            <input name="license_plate" placeholder="freiwillig" value="{{ edit_machine.license_plate if edit_machine else '' }}">
+
+            <label>TÜV</label>
+            <input name="tuv" placeholder="freiwillig, z. B. 05/2026" value="{{ edit_machine.tuv if edit_machine else '' }}">
+        </div>
+
+        <label>Aktueller Stand</label>
+        <input name="current_value" type="number" step="0.1" required value="{{ edit_machine.current_value if edit_machine else '' }}">
+
+        <label>Serviceintervall</label>
+        <input id="intervalInput" name="interval" type="number" step="0.1" required value="{{ edit_machine.interval if edit_machine else '' }}">
+
+        <label>Fahrzeug-Verantwortlicher</label>
+        <input name="responsible" required value="{{ edit_machine.responsible if edit_machine else '' }}">
+
+        <label>Aktueller Standort</label>
+        <input name="current_location" required value="{{ edit_machine.current_location if edit_machine else '' }}">
+
+        <div class="checkbox-row">
+            <input type="checkbox" name="independent" {% if edit_machine and edit_machine.independent %}checked{% endif %}>
+            <label>ortsunabhängig</label>
+        </div>
+
+        <label>Anbaugeräte / Zubehör</label>
+        <input name="attachments" value="{{ edit_machine.attachments if edit_machine else '' }}">
+
+        <button class="btn">
+            {% if edit_machine %}Änderungen speichern{% else %}Speichern{% endif %}
+        </button>
+    </form>
+</div>
+
+{% if session.get("admin") %}
+<br>
+<div class="card danger-card">
+    <h2>Admin-Bereich</h2>
+    <p>Alle Einträge können nur nach erneuter Eingabe des Admin-Passworts gelöscht werden.</p>
+
+    <form action="/delete-all" method="post">
+        <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort erneut eingeben" required>
+        <button class="btn btn-red">Alle Einträge löschen</button>
+    </form>
+</div>
+{% endif %}
+
+<br>
+
+<div class="table-box">
+    <h2>Alle Einträge</h2>
+
+    <table>
+        <tr>
+            <th>Status</th>
+            <th>Name</th>
+            <th>Kategorie</th>
+            <th>Kennzeichen</th>
+            <th>TÜV</th>
+            <th>Stand</th>
+            <th>Intervall</th>
+            <th>Verantwortlicher</th>
+            <th>Standort</th>
+            <th>Aktion</th>
+        </tr>
+
+        {% for m in machines %}
+        <tr>
+            <td>
+                {% if m.final_color == "red" %}
+                    <span class="status-red">🔴</span>
+                {% elif m.final_color == "yellow" %}
+                    <span class="status-yellow">🟡</span>
+                {% else %}
+                    <span class="status-green">🟢</span>
+                {% endif %}
+            </td>
+
+            <td>{{ m.name }}</td>
+            <td>{{ m.type_name }}</td>
+            <td>{{ m.license_plate if m.license_plate else "—" }}</td>
+            <td>{{ m.tuv if m.tuv else "—" }}</td>
+            <td>{{ m.current_value }} {{ m.unit }}</td>
+            <td>{{ m.interval }} {{ m.unit }}</td>
+            <td>{{ m.responsible }}</td>
+
+            <td>
+                {% if m.independent %}
+                    ortsunabhängig
+                {% else %}
+                    {{ m.current_location }}
+                {% endif %}
+            </td>
+
+            <td>
+                <a href="/edit-machine/{{ m.id }}">
+                    <button class="btn btn-small">Bearbeiten</button>
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<script>
+window.addEventListener("load", function(){
+    updateTypeFields();
+});
+</script>
+
+{% endblock %}

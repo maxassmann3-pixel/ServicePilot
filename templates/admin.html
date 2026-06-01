@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Admin-Dashboard</h1>
+        <p>Alle Systemdaten, Änderungen und Benutzeraktivitäten.</p>
+    </div>
+</div>
+
+<div class="card-grid">
+
+    <div class="card">
+        <h3>Gesamte Einträge</h3>
+        <div class="card-number">{{ all_machines|length }}</div>
+    </div>
+
+    <div class="card">
+        <h3>Aktivitäten</h3>
+        <div class="card-number">{{ logs|length }}</div>
+    </div>
+
+    <div class="card">
+        <h3>Fuhrpark</h3>
+        <div class="card-number" style="font-size:22px;">{{ fleet_name }}</div>
+    </div>
+
+</div>
+
+<div class="card">
+    <h2>Alle aktuellen Einträge</h2>
+
+    <div class="machine-card-grid">
+        {% for m in all_machines %}
+        <div class="machine-card">
+            <img src="{{ m.image_url }}">
+
+            <div class="machine-card-body">
+                <h3>{{ m.name }}</h3>
+                <p>{{ m.type_name }}</p>
+                <p>Stand: {{ m.current_value }} {{ m.unit }}</p>
+                <p>Intervall: {{ m.interval }} {{ m.unit }}</p>
+                <p>Standort: {{ m.current_location }}</p>
+                <p>Verantwortlich: {{ m.responsible }}</p>
+                <p>Notizen: {{ m.notes|length }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<br>
+
+<div class="card">
+    <h2>Aktivitätsprotokoll</h2>
+
+    {% for log in logs %}
+    <div class="admin-log-card">
+        <strong>{{ log.time }} – {{ log.user }}</strong>
+        <div>{{ log.action }}</div>
+        <div class="admin-detail">{{ log.details }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>{{ fleet_name }}</h1>
+        <p>Übersicht über Flotte, Wartungen und Maschinenstatus.</p>
+    </div>
+
+    <a href="/machines">
+        <button class="btn">+ Eintrag anlegen</button>
+    </a>
+</div>
+
+<div class="card-grid">
+
+    <div class="card">
+        <h3>Gesamt</h3>
+        <div class="card-number">{{ machines|length }}</div>
+    </div>
+
+    <div class="card">
+        <h3>🔴 Dringend</h3>
+        <div class="card-number status-red">{{ red }}</div>
+    </div>
+
+    <div class="card">
+        <h3>🟡 Achtung</h3>
+        <div class="card-number status-yellow">{{ yellow }}</div>
+    </div>
+
+    <div class="card">
+        <h3>🟢 OK</h3>
+        <div class="card-number status-green">{{ green }}</div>
+    </div>
+
+</div>
+
+<div class="card">
+    <h2>Statusübersicht</h2>
+
+    <div style="display:flex;justify-content:center;align-items:center;padding:10px;">
+        <canvas id="statusChart" width="120" height="120" style="max-width:120px; max-height:120px;"></canvas>
+    </div>
+</div>
+
+<br>
+
+<div class="table-box">
+    <h2>Einträge nach Dringlichkeit</h2>
+
+    <table>
+        <tr>
+            <th>Status</th>
+            <th>Name</th>
+            <th>Kategorie</th>
+            <th>Verantwortlicher</th>
+            <th>Standort</th>
+            <th>Rest bis Service</th>
+        </tr>
+
+        {% for m in machines %}
+        <tr>
+            <td>
+                {% if m.final_color == "red" %}
+                    <span class="status-red">🔴 Dringend</span>
+                {% elif m.final_color == "yellow" %}
+                    <span class="status-yellow">🟡 Achtung</span>
+                {% else %}
+                    <span class="status-green">🟢 OK</span>
+                {% endif %}
+            </td>
+
+            <td>{{ m.name }}</td>
+            <td>{{ m.type_name }}</td>
+            <td>{{ m.responsible }}</td>
+
+            <td>
+                {% if m.independent %}
+                    ortsunabhängig
+                {% else %}
+                    {{ m.current_location }}
+                {% endif %}
+            </td>
+
+            <td>{{ m.rest }} {{ m.unit }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<br>
+
+<div class="card">
+    <h2>Fuhrpark-Karten</h2>
+
+    <div class="machine-card-grid">
+        {% for m in machines %}
+        <div class="machine-card">
+            <img src="{{ m.image_url }}">
+
+            <div class="machine-card-body">
+
+                {% if m.final_color == "red" %}
+                    <span class="badge badge-red">🔴 Dringend</span>
+                {% elif m.final_color == "yellow" %}
+                    <span class="badge badge-yellow">🟡 Achtung</span>
+                {% else %}
+                    <span class="badge badge-green">🟢 OK</span>
+                {% endif %}
+
+                <h3>{{ m.name }}</h3>
+
+                <p>{{ m.type_name }}</p>
+                <p>Stand: {{ m.current_value }} {{ m.unit }}</p>
+                <p>Rest: {{ m.rest }} {{ m.unit }}</p>
+                <p>Verantwortlich: {{ m.responsible }}</p>
+
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctx = document.getElementById("statusChart");
+
+new Chart(ctx, {
+    type: "doughnut",
+    data: {
+        labels: ["Rot", "Gelb", "Grün"],
+        datasets: [{
+            data: [{{ red }}, {{ yellow }}, {{ green }}],
+            backgroundColor: ["#ff5d5d", "#ffd24a", "#3bd16f"],
+            borderColor: "#202733",
+            borderWidth: 3
+        }]
+    },
+    options: {
+        cutout: "70%",
+        responsive: false,
+        plugins: {
+            legend: { display: false }
+        }
+    }
+});
+</script>
+
+{% endblock %}

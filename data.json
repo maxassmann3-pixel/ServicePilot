@@ -1,0 +1,469 @@
+{
+    "shared_fleet": [
+        {
+            "id": "17800460234558315",
+            "name": "Lamborghini Nitro 110",
+            "type": "machine",
+            "current_value": 3609.4,
+            "interval": 4500.0,
+            "responsible": "Aßmann, Max",
+            "current_location": "Rüttihof",
+            "independent": false,
+            "attachments": "Frontkiste",
+            "notes": [],
+            "history": [
+                {
+                    "new_value": 2902.4,
+                    "note": "Fahrer möchte Spezi",
+                    "priority": "red",
+                    "location": "Standortwechsel: Landgasthof zu Mappacher Str. 29",
+                    "independent": false
+                },
+                {
+                    "new_value": 3604.5,
+                    "note": "Spiegel erneuern",
+                    "priority": "yellow",
+                    "location": "Standortwechsel: Mappacher Str. 29 zu Rüttihof",
+                    "independent": false
+                },
+                {
+                    "new_value": 3609.4,
+                    "note": "Blinker rechts defekt",
+                    "priority": "yellow",
+                    "location": "Rüttihof",
+                    "independent": false
+                },
+                {
+                    "service": "Service erledigt",
+                    "increase": 500.0,
+                    "checklist": {
+                        "oil": false,
+                        "filters": false,
+                        "tires": false,
+                        "lights": false,
+                        "damage": false,
+                        "cleaned": false
+                    }
+                },
+                {
+                    "service": "Service erledigt",
+                    "increase": 500.0,
+                    "checklist": {
+                        "oil": true,
+                        "filters": true,
+                        "tires": true,
+                        "lights": true,
+                        "damage": true,
+                        "cleaned": true
+                    }
+                },
+                {
+                    "service": "Service erledigt",
+                    "increase": 500.0,
+                    "checked_items": [],
+                    "resolved_notes": [
+                        0,
+                        1
+                    ]
+                }
+            ],
+            "license_plate": "LÖ-WJ 2024",
+            "tuv": "06/28"
+        },
+        {
+            "id": "1780046064212842",
+            "name": "Deutz DX 4.51",
+            "type": "machine",
+            "current_value": 9072.4,
+            "interval": 9500.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "Landgasthof",
+            "independent": false,
+            "attachments": "Frontkiste",
+            "notes": [],
+            "history": [],
+            "license_plate": "LÖ-WJ 2610",
+            "tuv": "11/26"
+        },
+        {
+            "id": "17800463346553361",
+            "name": "Takeuchi TB 145",
+            "type": "hours",
+            "current_value": 7804.3,
+            "interval": 8000.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "Rüttihof",
+            "independent": false,
+            "attachments": "Schwenklöffel",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "17800463753363924",
+            "name": "Bobcat E18",
+            "type": "hours",
+            "current_value": 6582.5,
+            "interval": 7500.0,
+            "responsible": "Riesterer, Henri",
+            "current_location": "Rüttihof",
+            "independent": false,
+            "attachments": "Löffel",
+            "notes": [],
+            "history": [
+                {
+                    "service": "Service erledigt",
+                    "increase": 500.0
+                }
+            ]
+        },
+        {
+            "id": "17800464515757933",
+            "name": "Ford Transit Connect",
+            "type": "vehicle",
+            "current_value": 211453.0,
+            "interval": 225000.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "-",
+            "independent": true,
+            "attachments": "",
+            "notes": [],
+            "history": [],
+            "license_plate": "LÖ-WJ 1995",
+            "tuv": "07/27"
+        },
+        {
+            "id": "1780046519505324",
+            "name": "Zeppelin Radlader",
+            "type": "hours",
+            "current_value": 13084.0,
+            "interval": 13000.0,
+            "responsible": "Weiß, Jonathan & Jakobi, Dominik",
+            "current_location": "Rüttihof",
+            "independent": false,
+            "attachments": "Schaufel, Palettengabel",
+            "notes": [],
+            "history": [
+                {
+                    "user": "Admin",
+                    "new_value": 13084.0,
+                    "note": "",
+                    "priority": "green",
+                    "location": "Rüttihof",
+                    "time": "01.06.2026 13:07:57"
+                }
+            ]
+        },
+        {
+            "id": "1780047116368255",
+            "name": "Unsinn Autoanhänger",
+            "type": "trailer",
+            "license_plate": "LÖ-WJ 2026",
+            "tuv": "03/28",
+            "current_value": 1000.0,
+            "interval": 10000.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "-",
+            "independent": true,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "17800471847029352",
+            "name": "Mongo",
+            "type": "trailer",
+            "license_plate": "LÖ-WJ 2024",
+            "tuv": "07/27",
+            "current_value": 1000.0,
+            "interval": 10000.0,
+            "responsible": "Riesterer, Henri",
+            "current_location": "Rüttihof",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "17800472213523808",
+            "name": "Demmler",
+            "type": "trailer",
+            "license_plate": "LÖ-WJ 1995",
+            "tuv": "07/27",
+            "current_value": 1000.0,
+            "interval": 10000.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "Landgasthof",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "17800472521431284",
+            "name": "Reisch",
+            "type": "machine",
+            "license_plate": "LÖ-DT 586",
+            "tuv": "07/27",
+            "current_value": 1000.0,
+            "interval": 10000.0,
+            "responsible": "Aßmann, Max",
+            "current_location": "Landgasthof",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "17800473063893864",
+            "name": "Minidumper",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 596.4,
+            "interval": 900.0,
+            "responsible": "Riesterer, Henri",
+            "current_location": "Steinen, Ritterweg 15",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": [
+                {
+                    "service": "Service erledigt",
+                    "increase": 100.0
+                },
+                {
+                    "service": "Service erledigt",
+                    "increase": 100.0
+                },
+                {
+                    "service": "Service erledigt",
+                    "increase": 100.0
+                }
+            ]
+        },
+        {
+            "id": "1780047362818054",
+            "name": "Vogesenblitz Holzspalter",
+            "type": "trailer",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 1600.4,
+            "interval": 2000.0,
+            "responsible": "Aßmann, Max",
+            "current_location": "Scheune Schmidt",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "1780047394740393",
+            "name": "Taifun Seilwinde",
+            "type": "trailer",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 100.0,
+            "interval": 10000.0,
+            "responsible": "Aßmann, Max",
+            "current_location": "Scheune Schmidt",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "17800474345211985",
+            "name": "Viking Rasenmähertraktor",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 498.5,
+            "interval": 550.0,
+            "responsible": "Aßmann, Max",
+            "current_location": "-",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": [
+                {
+                    "new_value": 498.5,
+                    "note": "Messer stumpf",
+                    "priority": "red",
+                    "location": "-"
+                },
+                {
+                    "service": "Service erledigt",
+                    "increase": 50.0,
+                    "checked_items": [
+                        "Motoröl geprüft",
+                        "Kraftstoff geprüft",
+                        "Luftfilter geprüft",
+                        "Zündkerze geprüft",
+                        "Schneidwerkzeug geprüft",
+                        "Schutzhaube geprüft",
+                        "Starter geprüft",
+                        "Gerät gereinigt"
+                    ],
+                    "resolved_notes": [
+                        0
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "17800475360466783",
+            "name": "Stihl MS 261 C",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 163.0,
+            "interval": 300.0,
+            "responsible": "Aßmann, Max",
+            "current_location": "Container",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": [
+                {
+                    "service": "Service erledigt",
+                    "increase": 50.0,
+                    "checked_items": [],
+                    "resolved_notes": []
+                }
+            ]
+        },
+        {
+            "id": "17800475680298386",
+            "name": "Stihl MS 342",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 369.0,
+            "interval": 450.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "Container",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": [
+                {
+                    "service": "Service erledigt",
+                    "increase": 50.0,
+                    "checked_items": [
+                        "Motoröl geprüft",
+                        "Kraftstoff geprüft",
+                        "Luftfilter geprüft",
+                        "Zündkerze geprüft",
+                        "Schneidwerkzeug geprüft"
+                    ],
+                    "resolved_notes": []
+                }
+            ]
+        },
+        {
+            "id": "1780047600808897",
+            "name": "Stihl MS 462",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 65.4,
+            "interval": 150.0,
+            "responsible": "Riesterer, Henri",
+            "current_location": "Container",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": [
+                {
+                    "user": "Admin",
+                    "service": "Service erledigt",
+                    "increase": 50.0,
+                    "checked_items": [
+                        "Kraftstoff geprüft",
+                        "Luftfilter gereinigt / gewechselt",
+                        "Zündkerze geprüft / gewechselt",
+                        "Kraftstofffilter geprüft",
+                        "Kette / Messer / Trennscheibe geprüft",
+                        "Schutzhaube geprüft",
+                        "Griffe / Gashebel geprüft",
+                        "Starter geprüft",
+                        "Getriebe / Schmierung geprüft",
+                        "Gerät gereinigt",
+                        "Schrauben / Muttern geprüft"
+                    ],
+                    "resolved_notes": [],
+                    "time": "01.06.2026 13:06:49"
+                }
+            ]
+        },
+        {
+            "id": "17800476426785278",
+            "name": "Rüttelplatte 200kg",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 342.0,
+            "interval": 500.0,
+            "responsible": "Aßmann, Max",
+            "current_location": "Container",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "1780047675048415",
+            "name": "Rüttler 500kg",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 380.0,
+            "interval": 500.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "-",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": [
+                {
+                    "user": "Max",
+                    "new_value": 380.0,
+                    "note": "",
+                    "priority": "green",
+                    "location": "-",
+                    "time": "01.06.2026 13:08:42"
+                }
+            ]
+        },
+        {
+            "id": "17800477133161066",
+            "name": "Stihl FS 87",
+            "type": "machine",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 432.7,
+            "interval": 500.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "Container",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        },
+        {
+            "id": "17800478058275003",
+            "name": "Cedima Steinkreissäge",
+            "type": "small_device",
+            "license_plate": "-",
+            "tuv": "-",
+            "current_value": 341.0,
+            "interval": 500.0,
+            "responsible": "Weiß, Jonathan",
+            "current_location": "Container",
+            "independent": false,
+            "attachments": "",
+            "notes": [],
+            "history": []
+        }
+    ]
+}

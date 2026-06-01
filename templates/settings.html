@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Einstellungen</h1>
+        <p>Fuhrparkname und Service-Intervalle bearbeiten.</p>
+    </div>
+</div>
+
+<div class="card">
+
+    <form method="post">
+
+        <label>Fuhrparkname</label>
+        <input name="fleet_name" type="text" value="{{ settings.fleet_name }}" required>
+
+        <label>Baumaschinen – Erhöhung in Betriebsstunden</label>
+        <input name="machine" type="number" step="0.1" value="{{ settings.machine }}" required>
+
+        <label>Fahrzeuge – Erhöhung in Kilometern</label>
+        <input name="vehicle" type="number" step="0.1" value="{{ settings.vehicle }}" required>
+
+        <label>Geräte / Anhänger – Erhöhung in Betriebsstunden</label>
+        <input name="trailer" type="number" step="0.1" value="{{ settings.trailer }}" required>
+
+        <label>Kleingeräte – Erhöhung in Betriebsstunden</label>
+        <input name="small_device" type="number" step="0.1" value="{{ settings.small_device }}" required>
+
+        <button class="btn">Einstellungen speichern</button>
+
+    </form>
+
+</div>
+
+{% endblock %}
