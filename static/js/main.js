@@ -7,9 +7,9 @@ window.addEventListener("load", function(){
 
             setTimeout(function(){
                 splash.style.display = "none";
-            }, 350);
+            }, 300);
 
-        }, 350);
+        }, 300);
     }
 });
 
@@ -28,13 +28,28 @@ document.querySelectorAll("a").forEach(function(link){
 
                 setTimeout(function(){
                     window.location.href = href;
-                }, 220);
+                }, 180);
             }else{
                 window.location.href = href;
             }
         }
     });
 });
+
+function toggleLocationChange(){
+    const checkbox = document.getElementById("location_change");
+    const box = document.getElementById("location-change-box");
+
+    if(!checkbox || !box){
+        return;
+    }
+
+    if(checkbox.checked){
+        box.style.display = "block";
+    }else{
+        box.style.display = "none";
+    }
+}
 
 function updateTypeFields(){
     const typeSelect = document.getElementById("typeSelect");

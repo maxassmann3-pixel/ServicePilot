@@ -555,3 +555,44 @@ tr td:last-child{
     color:#cbd7e6;
     line-height:1.5;
 }
+.copyright{
+    text-align:center;
+    color:#b8c0cc;
+    font-size:12px;
+    margin:22px 0;
+    letter-spacing:0.8px;
+    opacity:0.65;
+}
+
+.splash-inner{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+}
+
+.splash-copyright{
+    margin-top:18px;
+    color:#b8c0cc;
+    font-size:12px;
+    letter-spacing:0.8px;
+    opacity:0.65;
+}
+.denied-card{
+    text-align:center;
+}
+
+.denied-img{
+    width:100%;
+    max-height:280px;
+    object-fit:cover;
+    border-radius:24px;
+    margin-bottom:22px;
+    box-shadow:0 14px 35px rgba(0,0,0,.35);
+}
+
+.denied-title{
+    color:#ff5d5d;
+    font-size:30px;
+    margin-bottom:24px;
+}
