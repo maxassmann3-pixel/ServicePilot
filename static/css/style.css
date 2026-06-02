@@ -596,3 +596,33 @@ tr td:last-child{
     font-size:30px;
     margin-bottom:24px;
 }
+.machine-card img,
+.fleet-profile-img{
+    width:100%;
+    height:150px;
+    max-height:150px;
+    object-fit:cover;
+    border-radius:18px 18px 0 0;
+}
+
+.sidebar-logo{
+    max-width:150px;
+    max-height:90px;
+    object-fit:contain;
+    display:block;
+    margin:0 auto 14px auto;
+}
+
+#splash img{
+    max-width:180px;
+    max-height:180px;
+    object-fit:contain;
+}
+
+@media (min-width: 900px){
+    .machine-card img,
+    .fleet-profile-img{
+        height:160px;
+        max-height:160px;
+    }
+}

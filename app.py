@@ -1,12 +1,12 @@
 from flask import Flask, render_template, request, redirect, session
-import os, hashlib, time, secrets, json, base64
+import os, hashlib, time, secrets, base64, json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
-app.secret_key = "servicepilot_postgres_v1"
+app.secret_key = "servicepilot_postgres_v2"
 
 ADMIN_PASSWORD = "admin123"
 BERLIN = ZoneInfo("Europe/Berlin")
@@ -63,8 +63,29 @@ CHECKLISTS = {
 
 def db():
     if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL fehlt. Bitte in Render Environment eintragen.")
+        raise RuntimeError("DATABASE_URL fehlt.")
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+
+def sql_fetchone(query, params=()):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            return cur.fetchone()
+
+
+def sql_fetchall(query, params=()):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            return cur.fetchall()
+
+
+def sql_execute(query, params=()):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            conn.commit()
 
 
 def now_dt():
@@ -91,25 +112,18 @@ def current_fleet_id():
     return session.get("fleet_id")
 
 
-def sql_fetchone(query, params=()):
-    with db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, params)
-            return cur.fetchone()
+def uploaded_image_to_data_url(file):
+    if not file or file.filename == "":
+        return ""
 
+    data = file.read()
 
-def sql_fetchall(query, params=()):
-    with db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, params)
-            return cur.fetchall()
+    if len(data) > 2_500_000:
+        return ""
 
-
-def sql_execute(query, params=()):
-    with db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, params)
-            conn.commit()
+    mime = file.mimetype or "image/jpeg"
+    encoded = base64.b64encode(data).decode("utf-8")
+    return f"data:{mime};base64,{encoded}"
 
 
 def init_db():
@@ -150,8 +164,14 @@ def init_db():
                     responsible TEXT DEFAULT '',
                     current_location TEXT DEFAULT '',
                     independent BOOLEAN DEFAULT FALSE,
-                    attachments TEXT DEFAULT ''
+                    attachments TEXT DEFAULT '',
+                    custom_image TEXT DEFAULT ''
                 );
+            """)
+
+            cur.execute("""
+                ALTER TABLE machines
+                ADD COLUMN IF NOT EXISTS custom_image TEXT DEFAULT '';
             """)
 
             cur.execute("""
@@ -281,6 +301,10 @@ def has_perm(permission):
     return is_admin() or get_permissions().get(permission, False)
 
 
+def no_permission(message):
+    return render_template("no_permission.html", message=message)
+
+
 def log_action(action, details="", fleet_id=None):
     if current_user() == "Admin":
         return
@@ -309,7 +333,7 @@ def type_name(machine):
     return "Baumaschine"
 
 
-def image_url(machine):
+def default_machine_image(machine):
     name = machine.get("name", "").lower()
     t = machine.get("type", "machine")
 
@@ -327,6 +351,12 @@ def image_url(machine):
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Deutz-Fahr_Agrotron_165.7.jpg/640px-Deutz-Fahr_Agrotron_165.7.jpg"
 
     return "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Liebherr_934_Hydraulic_Excavator.jpg/640px-Liebherr_934_Hydraulic_Excavator.jpg"
+
+
+def image_url(machine):
+    if machine.get("custom_image"):
+        return machine.get("custom_image")
+    return default_machine_image(machine)
 
 
 def final_status(machine):
@@ -379,6 +409,25 @@ def get_machines(fleet_id=None):
     return prepare_machines(machines)
 
 
+def load_old_json_machines():
+    if not os.path.exists("data.json"):
+        return []
+
+    with open("data.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if "fleets" in data and "default" in data["fleets"]:
+        return data["fleets"]["default"]
+
+    if "shared_fleet" in data:
+        return data["shared_fleet"]
+
+    if "Max" in data:
+        return data["Max"]
+
+    return []
+
+
 @app.before_request
 def check_force_logout():
     if "user" in session and not is_admin():
@@ -416,7 +465,6 @@ def login():
 
     if row and row["password_hash"] == hash_password(password):
         token = row["force_token"] or secrets.token_hex(8)
-
         sql_execute("UPDATE users SET force_token = %s WHERE username = %s;", (token, username))
 
         session["user"] = username
@@ -439,70 +487,6 @@ def admin_login():
         return redirect("/admin/fleets")
 
     return redirect("/denied")
-
-@app.route("/admin/migrate-json-to-fleet", methods=["POST"])
-def migrate_json_to_fleet():
-    if not is_admin():
-        return redirect("/dashboard")
-
-    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
-        return redirect("/denied")
-
-    fleet_id = request.form["fleet_id"]
-    old_machines = load_old_json_machines()
-
-    imported = 0
-
-    for old in old_machines:
-        machine_id = str(old.get("id") or time.time()).replace(".", "") + str(imported)
-
-        exists = sql_fetchone("SELECT id FROM machines WHERE id = %s;", (machine_id,))
-        if exists:
-            continue
-
-        sql_execute("""
-            INSERT INTO machines (
-                id, fleet_id, name, type, license_plate, tuv,
-                current_value, interval, responsible,
-                current_location, independent, attachments
-            )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
-        """, (
-            machine_id,
-            fleet_id,
-            old.get("name", "Unbenannt"),
-            old.get("type", "machine"),
-            old.get("license_plate", ""),
-            old.get("tuv", ""),
-            float(old.get("current_value", 0)),
-            float(old.get("interval", 500)),
-            old.get("responsible", ""),
-            old.get("current_location", ""),
-            old.get("independent", False),
-            old.get("attachments", "")
-        ))
-
-        for note in old.get("notes", []):
-            sql_execute("""
-                INSERT INTO notes (
-                    machine_id, text, priority, location, independent,
-                    created_by, created_at, value_type
-                )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s);
-            """, (
-                machine_id,
-                note.get("text", ""),
-                note.get("priority", "green"),
-                note.get("location", ""),
-                note.get("independent", False),
-                note.get("created_by", "Altbestand"),
-                now_dt(),
-                note.get("value_type", "")
-            ))
-
-        imported += 1
-
-    return redirect("/admin/fleets")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -548,39 +532,7 @@ def fleet_select():
 
     fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;")
     return render_template("fleet_select.html", fleets=fleets)
-def uploaded_image_to_data_url(file):
-    if not file or file.filename == "":
-        return ""
 
-    data = file.read()
-
-    if len(data) > 2_500_000:
-        return ""
-
-    mime = file.mimetype or "image/jpeg"
-    encoded = base64.b64encode(data).decode("utf-8")
-
-    return f"data:{mime};base64,{encoded}"
-
-
-def load_old_json_machines():
-    if not os.path.exists("data.json"):
-        return []
-
-    with open("data.json", "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    if "fleets" in data:
-        if "default" in data["fleets"]:
-            return data["fleets"]["default"]
-
-    if "shared_fleet" in data:
-        return data["shared_fleet"]
-
-    if "Max" in data:
-        return data["Max"]
-
-    return []
 
 @app.route("/join-fleet", methods=["POST"])
 def join_fleet():
@@ -621,17 +573,19 @@ def machines():
 
     if request.method == "POST":
         if not has_perm("create_machines"):
-            return "Keine Berechtigung: Maschinen anlegen"
+            return no_permission("Du hast keine Berechtigung, Maschinen anzulegen.")
 
         machine_id = str(time.time()).replace(".", "")
+        uploaded = uploaded_image_to_data_url(request.files.get("machine_image_file"))
+        custom_image = uploaded or request.form.get("machine_image_url", "")
 
         sql_execute("""
             INSERT INTO machines (
                 id, fleet_id, name, type, license_plate, tuv,
                 current_value, interval, responsible,
-                current_location, independent, attachments
+                current_location, independent, attachments, custom_image
             )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
         """, (
             machine_id,
             current_fleet_id(),
@@ -644,7 +598,8 @@ def machines():
             request.form["responsible"],
             request.form["current_location"],
             "independent" in request.form,
-            request.form["attachments"]
+            request.form["attachments"],
+            custom_image
         ))
 
         log_action("Eintrag angelegt", f"{request.form['name']} wurde angelegt.")
@@ -657,18 +612,21 @@ def edit_machine(machine_id):
     if "user" not in session:
         return redirect("/")
     if not has_perm("create_machines"):
-        return "Keine Berechtigung: Maschinen bearbeiten"
+        return no_permission("Du hast keine Berechtigung, Maschinen zu bearbeiten.")
 
     machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
     if not machine:
         return "Eintrag nicht gefunden"
 
     if request.method == "POST":
+        uploaded = uploaded_image_to_data_url(request.files.get("machine_image_file"))
+        custom_image = uploaded or request.form.get("machine_image_url", "") or machine.get("custom_image", "")
+
         sql_execute("""
             UPDATE machines SET
                 name=%s, type=%s, license_plate=%s, tuv=%s,
                 current_value=%s, interval=%s, responsible=%s,
-                current_location=%s, independent=%s, attachments=%s
+                current_location=%s, independent=%s, attachments=%s, custom_image=%s
             WHERE id=%s;
         """, (
             request.form["name"],
@@ -681,6 +639,7 @@ def edit_machine(machine_id):
             request.form["current_location"],
             "independent" in request.form,
             request.form["attachments"],
+            custom_image,
             machine_id
         ))
 
@@ -697,7 +656,7 @@ def reports():
     if not current_fleet_id():
         return redirect("/fleet-select")
     if not has_perm("send_reports"):
-        return "Keine Berechtigung: Tagesberichte senden"
+        return no_permission("Du hast keine Berechtigung, Tagesberichte zu senden.")
 
     if request.method == "POST":
         machine_id = request.form["machine_id"]
@@ -780,7 +739,7 @@ def service():
     if not current_fleet_id():
         return redirect("/fleet-select")
     if not has_perm("do_service"):
-        return "Keine Berechtigung: Service durchführen"
+        return no_permission("Du hast keine Berechtigung, Servicearbeiten durchzuführen.")
 
     machines_data = get_machines()
     sort_by = request.args.get("sort_by", "status")
@@ -797,7 +756,7 @@ def service_check(machine_id):
     if "user" not in session:
         return redirect("/")
     if not has_perm("do_service"):
-        return "Keine Berechtigung: Service durchführen"
+        return no_permission("Du hast keine Berechtigung, Servicearbeiten durchzuführen.")
 
     machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
     if not machine:
@@ -814,7 +773,7 @@ def service_done(machine_id):
     if "user" not in session:
         return redirect("/")
     if not has_perm("do_service"):
-        return "Keine Berechtigung"
+        return no_permission("Du hast für diese Aktion keine Berechtigung.")
 
     machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
     settings = get_settings()
@@ -845,7 +804,6 @@ def service_done(machine_id):
         ))
 
     log_action("Service erledigt", f"{machine['name']} | Intervall erhöht um {increase}")
-
     return redirect("/service")
 
 
@@ -864,6 +822,9 @@ def admin_fleets():
     if request.method == "POST":
         action = request.form.get("action")
 
+        uploaded = uploaded_image_to_data_url(request.files.get("profile_image_file"))
+        profile_image = uploaded or request.form.get("profile_image", "")
+
         if action == "create_fleet":
             fleet_id = "fleet_" + str(time.time()).replace(".", "")
             sql_execute("""
@@ -873,7 +834,7 @@ def admin_fleets():
                 fleet_id,
                 request.form["fleet_name"],
                 hash_password(request.form["fleet_password"]),
-                request.form.get("profile_image", "")
+                profile_image
             ))
 
         elif action == "update_fleet":
@@ -886,23 +847,98 @@ def admin_fleets():
                 """, (
                     request.form["fleet_name"],
                     hash_password(request.form["fleet_password"]),
-                    request.form.get("profile_image", ""),
+                    profile_image,
                     fleet_id
                 ))
             else:
-                sql_execute("""
-                    UPDATE fleets SET name=%s, profile_image=%s
-                    WHERE id=%s;
-                """, (
-                    request.form["fleet_name"],
-                    request.form.get("profile_image", ""),
-                    fleet_id
-                ))
+                if profile_image:
+                    sql_execute("""
+                        UPDATE fleets SET name=%s, profile_image=%s
+                        WHERE id=%s;
+                    """, (
+                        request.form["fleet_name"],
+                        profile_image,
+                        fleet_id
+                    ))
+                else:
+                    sql_execute("""
+                        UPDATE fleets SET name=%s
+                        WHERE id=%s;
+                    """, (
+                        request.form["fleet_name"],
+                        fleet_id
+                    ))
 
         return redirect("/admin/fleets")
 
     fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;")
     return render_template("admin_fleets.html", fleets=fleets)
+
+
+@app.route("/admin/migrate-json-to-fleet", methods=["POST"])
+def migrate_json_to_fleet():
+    if not is_admin():
+        return redirect("/dashboard")
+
+    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
+        return redirect("/denied")
+
+    fleet_id = request.form["fleet_id"]
+    old_machines = load_old_json_machines()
+
+    imported = 0
+
+    for old in old_machines:
+        machine_id = str(old.get("id") or time.time()).replace(".", "") + "_" + str(imported)
+
+        exists = sql_fetchone("SELECT id FROM machines WHERE id = %s;", (machine_id,))
+        if exists:
+            continue
+
+        sql_execute("""
+            INSERT INTO machines (
+                id, fleet_id, name, type, license_plate, tuv,
+                current_value, interval, responsible,
+                current_location, independent, attachments, custom_image
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+        """, (
+            machine_id,
+            fleet_id,
+            old.get("name", "Unbenannt"),
+            old.get("type", "machine"),
+            old.get("license_plate", ""),
+            old.get("tuv", ""),
+            float(old.get("current_value", 0)),
+            float(old.get("interval", 500)),
+            old.get("responsible", ""),
+            old.get("current_location", ""),
+            old.get("independent", False),
+            old.get("attachments", ""),
+            old.get("custom_image", "")
+        ))
+
+        for note in old.get("notes", []):
+            sql_execute("""
+                INSERT INTO notes (
+                    machine_id, text, priority, location, independent,
+                    created_by, created_at, value_type
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s);
+            """, (
+                machine_id,
+                note.get("text", ""),
+                note.get("priority", "green"),
+                note.get("location", ""),
+                note.get("independent", False),
+                note.get("created_by", "Altbestand"),
+                now_dt(),
+                note.get("value_type", "")
+            ))
+
+        imported += 1
+
+    return redirect("/admin/fleets")
 
 
 @app.route("/admin/users", methods=["GET", "POST"])

@@ -4,50 +4,56 @@
 
 <div class="header">
     <div>
-        <h1>Maschinenverwaltung</h1>
+        <h1>Maschinen</h1>
+        <p>Maschinen, Fahrzeuge, Geräte und Kleingeräte verwalten.</p>
     </div>
 </div>
 
 <div class="card">
-
     {% if edit_machine %}
         <h2>Eintrag bearbeiten</h2>
-        <form method="post" action="/edit-machine/{{ edit_machine.id }}">
+        <form method="post" enctype="multipart/form-data" action="/edit-machine/{{ edit_machine.id }}">
     {% else %}
         <h2>Neuen Eintrag anlegen</h2>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data" action="/machines">
     {% endif %}
 
-        <label>Kategorie</label>
+        <label>Name</label>
+        <input name="name" value="{{ edit_machine.name if edit_machine else '' }}" placeholder="z. B. Liebherr R930" required>
+
+        <label>Bild aus Galerie hochladen</label>
+        <input name="machine_image_file" type="file" accept="image/*">
+
+        <label>oder Bild-URL aus dem Internet</label>
+        <input name="machine_image_url" placeholder="https://..." value="{{ edit_machine.custom_image if edit_machine else '' }}">
+
+        <label>Art</label>
         <select name="type" id="typeSelect" onchange="updateTypeFields()" required>
-            <option value="machine" {% if edit_machine and edit_machine.type == "machine" %}selected{% endif %}>Baumaschine – Betriebsstunden</option>
-            <option value="vehicle" {% if edit_machine and edit_machine.type == "vehicle" %}selected{% endif %}>Fahrzeug – Kilometer</option>
+            <option value="machine" {% if edit_machine and edit_machine.type == "machine" %}selected{% endif %}>Baumaschine</option>
+            <option value="vehicle" {% if edit_machine and edit_machine.type == "vehicle" %}selected{% endif %}>Fahrzeug</option>
             <option value="trailer" {% if edit_machine and edit_machine.type == "trailer" %}selected{% endif %}>Gerät / Anhänger</option>
             <option value="small_device" {% if edit_machine and edit_machine.type == "small_device" %}selected{% endif %}>Kleingerät</option>
         </select>
 
-        <label>Name</label>
-        <input name="name" required value="{{ edit_machine.name if edit_machine else '' }}">
-
         <div id="vehicleFields">
             <label>Kennzeichen</label>
-            <input name="license_plate" placeholder="freiwillig" value="{{ edit_machine.license_plate if edit_machine else '' }}">
+            <input name="license_plate" value="{{ edit_machine.license_plate if edit_machine else '' }}" placeholder="z. B. LÖ-AB 123">
 
             <label>TÜV</label>
-            <input name="tuv" placeholder="freiwillig, z. B. 05/2026" value="{{ edit_machine.tuv if edit_machine else '' }}">
+            <input name="tuv" value="{{ edit_machine.tuv if edit_machine else '' }}" placeholder="z. B. 05/2027">
         </div>
 
         <label>Aktueller Stand</label>
-        <input name="current_value" type="number" step="0.1" required value="{{ edit_machine.current_value if edit_machine else '' }}">
+        <input name="current_value" type="number" step="0.1" value="{{ edit_machine.current_value if edit_machine else '' }}" placeholder="Betriebsstunden oder Kilometer" required>
 
-        <label>Serviceintervall</label>
-        <input id="intervalInput" name="interval" type="number" step="0.1" required value="{{ edit_machine.interval if edit_machine else '' }}">
+        <label>Service-Intervall</label>
+        <input name="interval" id="intervalInput" type="number" step="0.1" value="{{ edit_machine.interval if edit_machine else '' }}" placeholder="z. B. 500 oder 15000" required>
 
         <label>Fahrzeug-Verantwortlicher</label>
-        <input name="responsible" required value="{{ edit_machine.responsible if edit_machine else '' }}">
+        <input name="responsible" value="{{ edit_machine.responsible if edit_machine else '' }}" placeholder="z. B. Max" required>
 
         <label>Aktueller Standort</label>
-        <input name="current_location" required value="{{ edit_machine.current_location if edit_machine else '' }}">
+        <input name="current_location" value="{{ edit_machine.current_location if edit_machine else '' }}" placeholder="z. B. Halle 1, Baustelle Süd" required>
 
         <div class="checkbox-row">
             <input type="checkbox" name="independent" {% if edit_machine and edit_machine.independent %}checked{% endif %}>
@@ -55,82 +61,98 @@
         </div>
 
         <label>Anbaugeräte / Zubehör</label>
-        <input name="attachments" value="{{ edit_machine.attachments if edit_machine else '' }}">
+        <textarea name="attachments" placeholder="z. B. Greifer, Schaufel, Palettengabel">{{ edit_machine.attachments if edit_machine else '' }}</textarea>
+
+        {% if edit_machine and edit_machine.custom_image %}
+            <div class="card" style="margin-top:18px;">
+                <h3>Aktuelles Bild</h3>
+                <img src="{{ edit_machine.custom_image }}" style="width:100%; max-height:220px; object-fit:cover; border-radius:18px;">
+            </div>
+        {% endif %}
 
         <button class="btn">
-            {% if edit_machine %}Änderungen speichern{% else %}Speichern{% endif %}
+            {% if edit_machine %}
+                Änderungen speichern
+            {% else %}
+                Eintrag anlegen
+            {% endif %}
         </button>
+
     </form>
 </div>
 
-{% if session.get("admin") %}
-<br>
-<div class="card danger-card">
-    <h2>Admin-Bereich</h2>
-    <p>Alle Einträge können nur nach erneuter Eingabe des Admin-Passworts gelöscht werden.</p>
-
-    <form action="/delete-all" method="post">
-        <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort erneut eingeben" required>
-        <button class="btn btn-red">Alle Einträge löschen</button>
-    </form>
-</div>
-{% endif %}
-
 <br>
 
-<div class="table-box">
-    <h2>Alle Einträge</h2>
+<div class="machine-card-grid">
+    {% for m in machines %}
+    <div class="machine-card">
 
-    <table>
-        <tr>
-            <th>Status</th>
-            <th>Name</th>
-            <th>Kategorie</th>
-            <th>Kennzeichen</th>
-            <th>TÜV</th>
-            <th>Stand</th>
-            <th>Intervall</th>
-            <th>Verantwortlicher</th>
-            <th>Standort</th>
-            <th>Aktion</th>
-        </tr>
+        <img src="{{ m.image_url }}" alt="{{ m.name }}">
 
-        {% for m in machines %}
-        <tr>
-            <td>
+        <div class="machine-card-body">
+            <div class="machine-status-line">
                 {% if m.final_color == "red" %}
-                    <span class="status-red">🔴</span>
+                    <span class="status-red">🔴 Dringend</span>
                 {% elif m.final_color == "yellow" %}
-                    <span class="status-yellow">🟡</span>
+                    <span class="status-yellow">🟡 Achtung</span>
                 {% else %}
-                    <span class="status-green">🟢</span>
+                    <span class="status-green">🟢 OK</span>
                 {% endif %}
-            </td>
+            </div>
 
-            <td>{{ m.name }}</td>
-            <td>{{ m.type_name }}</td>
-            <td>{{ m.license_plate if m.license_plate else "—" }}</td>
-            <td>{{ m.tuv if m.tuv else "—" }}</td>
-            <td>{{ m.current_value }} {{ m.unit }}</td>
-            <td>{{ m.interval }} {{ m.unit }}</td>
-            <td>{{ m.responsible }}</td>
+            <h3>{{ m.name }}</h3>
 
-            <td>
+            <p><strong>Art:</strong> {{ m.type_name }}</p>
+            <p><strong>Stand:</strong> {{ m.current_value }} {{ m.unit }}</p>
+            <p><strong>Rest bis Service:</strong> {{ m.rest }} {{ m.unit }}</p>
+            <p><strong>Verantwortlicher:</strong> {{ m.responsible }}</p>
+
+            <p>
+                <strong>Aktueller Standort:</strong>
                 {% if m.independent %}
                     ortsunabhängig
                 {% else %}
                     {{ m.current_location }}
                 {% endif %}
-            </td>
+            </p>
 
-            <td>
-                <a href="/edit-machine/{{ m.id }}">
-                    <button class="btn btn-small">Bearbeiten</button>
-                </a>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+            {% if m.license_plate %}
+                <p><strong>Kennzeichen:</strong> {{ m.license_plate }}</p>
+            {% endif %}
+
+            {% if m.tuv %}
+                <p><strong>TÜV:</strong> {{ m.tuv }}</p>
+            {% endif %}
+
+            {% if m.attachments %}
+                <p><strong>Anbaugeräte:</strong> {{ m.attachments }}</p>
+            {% endif %}
+
+            {% if m.notes %}
+                <div class="mini-note-list">
+                    <strong>Notizen:</strong>
+                    {% for n in m.notes %}
+                        <div class="mini-note">
+                            {% if n.priority == "red" %}
+                                🔴
+                            {% elif n.priority == "yellow" %}
+                                🟡
+                            {% else %}
+                                🟢
+                            {% endif %}
+                            {{ n.text }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <a href="/edit-machine/{{ m.id }}">
+                <button class="btn btn-small">Bearbeiten</button>
+            </a>
+        </div>
+
+    </div>
+    {% endfor %}
 </div>
 
 <script>
