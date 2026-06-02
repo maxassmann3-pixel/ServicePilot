@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Fuhrparkverwaltung</h1>
+        <p>Fuhrparke anlegen, Passwörter festlegen und Profilbilder speichern.</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Fuhrpark anlegen</h2>
+
+    <form method="post">
+        <input type="hidden" name="action" value="create_fleet">
+
+        <label>Fuhrparkname</label>
+        <input name="fleet_name" required>
+
+        <label>Passwort festlegen</label>
+        <input name="fleet_password" type="password" required>
+
+        <label>Profilbild-URL</label>
+        <input name="profile_image" placeholder="https://...">
+
+        <button class="btn">Fuhrpark anlegen</button>
+    </form>
+</div>
+
+<br>
+
+<div class="machine-card-grid">
+    {% for fleet in fleets %}
+    <div class="machine-card">
+
+        {% if fleet.profile_image %}
+        <img src="{{ fleet.profile_image }}">
+        {% endif %}
+
+        <div class="machine-card-body">
+            <h3>{{ fleet.name }}</h3>
+
+            <form method="post">
+                <input type="hidden" name="action" value="update_fleet">
+                <input type="hidden" name="fleet_id" value="{{ fleet.id }}">
+
+                <label>Fuhrparkname</label>
+                <input name="fleet_name" value="{{ fleet.name }}" required>
+
+                <label>Passwort festlegen / ändern</label>
+                <input name="fleet_password" type="password" placeholder="Leer lassen = altes Passwort bleibt">
+
+                <label>Profilbild-URL</label>
+                <input name="profile_image" value="{{ fleet.profile_image }}">
+
+                <button class="btn btn-small">Speichern</button>
+            </form>
+
+            <br>
+
+            <form action="/delete-all" method="post">
+                <input type="hidden" name="fleet_id" value="{{ fleet.id }}">
+                <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort" required>
+                <button class="btn btn-red btn-small">Maschinen löschen</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

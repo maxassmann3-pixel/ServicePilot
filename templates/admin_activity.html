@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Aktivitätsverlauf</h1>
+        <p>Änderungen nach Nutzer filtern und Verlauf zurücksetzen.</p>
+    </div>
+</div>
+
+<div class="card">
+    <form method="get" class="filter-box">
+        <select name="user">
+            <option value="">Alle Nutzer</option>
+            {% for user in users %}
+            <option value="{{ user.username }}" {% if filter_user == user.username %}selected{% endif %}>
+                {{ user.username }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <button class="btn">Filtern</button>
+    </form>
+</div>
+
+<br>
+
+<div class="card danger-card">
+    <form method="post">
+        <input type="hidden" name="action" value="clear_activity">
+        <button class="btn btn-red">Aktivitäten zurücksetzen</button>
+    </form>
+</div>
+
+<br>
+
+<div class="card">
+    <h2>Verlauf</h2>
+
+    {% for log in logs %}
+    <div class="admin-log-card">
+        <strong>{{ log.created_at }} – {{ log.username }}</strong>
+        <div>{{ log.action }}</div>
+        <div class="admin-detail">
+            Fuhrpark: {{ log.fleet_name }}<br>
+            {{ log.details }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

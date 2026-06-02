@@ -37,8 +37,10 @@
             <a class="{% if request.path == '/service' %}active{% endif %}" href="/service">🛠 Servicecenter (Werkstatt)</a>
 
             {% if session.get("admin") %}
+                <a class="{% if request.path == '/admin/fleets' %}active{% endif %}" href="/admin/fleets">🏢 Fuhrparkverwaltung</a>
+                <a class="{% if request.path == '/admin/users' %}active{% endif %}" href="/admin/users">👥 Nutzerverwaltung</a>
+                <a class="{% if request.path == '/admin/activity' %}active{% endif %}" href="/admin/activity">📋 Aktivitäten</a>
                 <a class="{% if request.path == '/settings' %}active{% endif %}" href="/settings">⚙️ Einstellungen</a>
-                <a class="{% if request.path == '/admin' %}active{% endif %}" href="/admin">🔐 Admin</a>
             {% endif %}
 
             <a href="/logout">🚪 Logout</a>

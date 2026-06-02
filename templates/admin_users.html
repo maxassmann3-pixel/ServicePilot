@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Nutzerverwaltung</h1>
+        <p>Rollen, Rechte und aktive Sitzungen verwalten.</p>
+    </div>
+</div>
+
+<div class="machine-card-grid">
+    {% for user in users %}
+    <div class="machine-card">
+        <div class="machine-card-body">
+            <h3>{{ user.username }}</h3>
+
+            <form method="post">
+                <input type="hidden" name="action" value="update_user">
+                <input type="hidden" name="username" value="{{ user.username }}">
+
+                <label>Rolle</label>
+                <select name="role">
+                    <option value="Baustelle" {% if user.role == "Baustelle" %}selected{% endif %}>Baustelle</option>
+                    <option value="Werkstatt" {% if user.role == "Werkstatt" %}selected{% endif %}>Werkstatt</option>
+                    <option value="Eigene Rolle" {% if user.role == "Eigene Rolle" %}selected{% endif %}>Eigene Rolle</option>
+                </select>
+
+                <label>Eigene Rolle</label>
+                <input name="custom_role" value="{{ user.custom_role }}">
+
+                <div class="checkbox-row">
+                    <input type="checkbox" name="create_machines" {% if user.perm_create_machines %}checked{% endif %}>
+                    <label>Maschinen anlegen</label>
+                </div>
+
+                <div class="checkbox-row">
+                    <input type="checkbox" name="send_reports" {% if user.perm_send_reports %}checked{% endif %}>
+                    <label>Tagesberichte senden</label>
+                </div>
+
+                <div class="checkbox-row">
+                    <input type="checkbox" name="do_service" {% if user.perm_do_service %}checked{% endif %}>
+                    <label>Service durchführen</label>
+                </div>
+
+                <button class="btn btn-small">Nutzer speichern</button>
+            </form>
+
+            <br>
+
+            <form method="post">
+                <input type="hidden" name="action" value="force_logout">
+                <input type="hidden" name="username" value="{{ user.username }}">
+                <button class="btn btn-red btn-small">Nutzer rauswerfen</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,20 +1,16 @@
 from flask import Flask, render_template, request, redirect, session
-import json, os, hashlib, time, secrets
+import os, hashlib, time, secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
-app.secret_key = "servicepilot_v18"
-
-USERS_FILE = "users.json"
-DATA_FILE = "data.json"
-SETTINGS_FILE = "settings.json"
-LOG_FILE = "activity_log.json"
-FLEETS_FILE = "fleets.json"
-USER_META_FILE = "user_meta.json"
+app.secret_key = "servicepilot_postgres_v1"
 
 ADMIN_PASSWORD = "admin123"
 BERLIN = ZoneInfo("Europe/Berlin")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 DEFAULT_PERMISSIONS = {
     "create_machines": False,
@@ -65,23 +61,18 @@ CHECKLISTS = {
 }
 
 
+def db():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL fehlt. Bitte in Render Environment eintragen.")
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+
+def now_dt():
+    return datetime.now(BERLIN)
+
+
 def now_str():
-    return datetime.now(BERLIN).strftime("%d.%m.%Y %H:%M:%S")
-
-
-def load(file):
-    if os.path.exists(file):
-        with open(file, "r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return {}
-    return {}
-
-
-def save(file, data):
-    with open(file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    return now_dt().strftime("%d.%m.%Y %H:%M:%S")
 
 
 def hash_password(password):
@@ -96,54 +87,173 @@ def current_user():
     return session.get("user", "Unbekannt")
 
 
-def load_settings():
-    settings = load(SETTINGS_FILE)
-    for key, value in DEFAULT_SETTINGS.items():
-        settings.setdefault(key, value)
-    return settings
+def current_fleet_id():
+    return session.get("fleet_id")
 
 
-def load_fleets():
-    fleets = load(FLEETS_FILE)
-
-    if not fleets:
-        fleets = {
-            "default": {
-                "name": "ServicePilot Fuhrpark",
-                "password_hash": hash_password("fuhrpark123")
-            }
-        }
-        save(FLEETS_FILE, fleets)
-
-    return fleets
+def sql_fetchone(query, params=()):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            return cur.fetchone()
 
 
-def load_user_meta():
-    users = load(USERS_FILE)
-    meta = load(USER_META_FILE)
-
-    for username in users.keys():
-        meta.setdefault(username, {
-            "role": "Baustelle",
-            "custom_role": "",
-            "permissions": DEFAULT_PERMISSIONS.copy(),
-            "force_token": secrets.token_hex(8)
-        })
-
-        meta[username].setdefault("role", "Baustelle")
-        meta[username].setdefault("custom_role", "")
-        meta[username].setdefault("permissions", DEFAULT_PERMISSIONS.copy())
-        meta[username].setdefault("force_token", secrets.token_hex(8))
-
-    save(USER_META_FILE, meta)
-    return meta
+def sql_fetchall(query, params=()):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            return cur.fetchall()
 
 
-def save_user_meta(meta):
-    save(USER_META_FILE, meta)
+def sql_execute(query, params=()):
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            conn.commit()
 
 
-def get_user_permissions(username=None):
+def init_db():
+    with db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    username TEXT PRIMARY KEY,
+                    password_hash TEXT NOT NULL,
+                    role TEXT DEFAULT 'Baustelle',
+                    custom_role TEXT DEFAULT '',
+                    perm_create_machines BOOLEAN DEFAULT FALSE,
+                    perm_send_reports BOOLEAN DEFAULT TRUE,
+                    perm_do_service BOOLEAN DEFAULT FALSE,
+                    force_token TEXT DEFAULT ''
+                );
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS fleets (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    profile_image TEXT DEFAULT ''
+                );
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS machines (
+                    id TEXT PRIMARY KEY,
+                    fleet_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    license_plate TEXT DEFAULT '',
+                    tuv TEXT DEFAULT '',
+                    current_value DOUBLE PRECISION DEFAULT 0,
+                    interval DOUBLE PRECISION DEFAULT 0,
+                    responsible TEXT DEFAULT '',
+                    current_location TEXT DEFAULT '',
+                    independent BOOLEAN DEFAULT FALSE,
+                    attachments TEXT DEFAULT ''
+                );
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS notes (
+                    id SERIAL PRIMARY KEY,
+                    machine_id TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    priority TEXT DEFAULT 'green',
+                    location TEXT DEFAULT '',
+                    independent BOOLEAN DEFAULT FALSE,
+                    created_by TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    value_type TEXT DEFAULT ''
+                );
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS histories (
+                    id SERIAL PRIMARY KEY,
+                    machine_id TEXT NOT NULL,
+                    username TEXT DEFAULT '',
+                    action TEXT DEFAULT '',
+                    new_value DOUBLE PRECISION,
+                    value_type TEXT DEFAULT '',
+                    note TEXT DEFAULT '',
+                    priority TEXT DEFAULT '',
+                    old_location TEXT DEFAULT '',
+                    new_location TEXT DEFAULT '',
+                    location_change BOOLEAN DEFAULT FALSE,
+                    details TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS activities (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT DEFAULT '',
+                    fleet_id TEXT DEFAULT '',
+                    fleet_name TEXT DEFAULT '',
+                    action TEXT DEFAULT '',
+                    details TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+            """)
+
+            cur.execute("SELECT id FROM fleets WHERE id = 'default';")
+            if not cur.fetchone():
+                cur.execute("""
+                    INSERT INTO fleets (id, name, password_hash, profile_image)
+                    VALUES (%s, %s, %s, %s);
+                """, ("default", "ServicePilot Fuhrpark", hash_password("fuhrpark123"), ""))
+
+            for key, value in DEFAULT_SETTINGS.items():
+                cur.execute("""
+                    INSERT INTO settings (key, value)
+                    VALUES (%s, %s)
+                    ON CONFLICT (key) DO NOTHING;
+                """, (key, str(value)))
+
+            conn.commit()
+
+
+def get_setting(key):
+    row = sql_fetchone("SELECT value FROM settings WHERE key = %s;", (key,))
+    return row["value"] if row else str(DEFAULT_SETTINGS.get(key, ""))
+
+
+def get_settings():
+    return {
+        "machine": float(get_setting("machine")),
+        "vehicle": float(get_setting("vehicle")),
+        "trailer": float(get_setting("trailer")),
+        "small_device": float(get_setting("small_device"))
+    }
+
+
+def set_setting(key, value):
+    sql_execute("""
+        INSERT INTO settings (key, value)
+        VALUES (%s, %s)
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+    """, (key, str(value)))
+
+
+def get_fleet_name(fleet_id=None):
+    fid = fleet_id or current_fleet_id()
+    if not fid:
+        return "Kein Fuhrpark gewählt"
+
+    row = sql_fetchone("SELECT name FROM fleets WHERE id = %s;", (fid,))
+    return row["name"] if row else "Kein Fuhrpark gewählt"
+
+
+def get_permissions(username=None):
     if is_admin():
         return {
             "create_machines": True,
@@ -152,88 +262,36 @@ def get_user_permissions(username=None):
         }
 
     username = username or current_user()
-    meta = load_user_meta()
-    return meta.get(username, {}).get("permissions", DEFAULT_PERMISSIONS.copy())
+    row = sql_fetchone("""
+        SELECT perm_create_machines, perm_send_reports, perm_do_service
+        FROM users WHERE username = %s;
+    """, (username,))
+
+    if not row:
+        return DEFAULT_PERMISSIONS.copy()
+
+    return {
+        "create_machines": row["perm_create_machines"],
+        "send_reports": row["perm_send_reports"],
+        "do_service": row["perm_do_service"]
+    }
 
 
 def has_perm(permission):
-    return is_admin() or get_user_permissions().get(permission, False)
-
-
-def current_fleet_id():
-    return session.get("fleet_id")
-
-
-def current_fleet_name():
-    fleets = load_fleets()
-    fleet_id = current_fleet_id()
-
-    if fleet_id in fleets:
-        return fleets[fleet_id]["name"]
-
-    return "Kein Fuhrpark gewählt"
+    return is_admin() or get_permissions().get(permission, False)
 
 
 def log_action(action, details="", fleet_id=None):
-    logs = load(LOG_FILE)
+    if current_user() == "Admin":
+        return
 
-    if not isinstance(logs, list):
-        logs = []
+    fid = fleet_id or current_fleet_id() or ""
+    fname = get_fleet_name(fid) if fid else ""
 
-    logs.insert(0, {
-        "time": now_str(),
-        "user": current_user(),
-        "fleet_id": fleet_id or current_fleet_id() or "admin",
-        "fleet_name": current_fleet_name() if current_fleet_id() else "Admin / System",
-        "action": action,
-        "details": details
-    })
-
-    save(LOG_FILE, logs[:1000])
-
-
-def get_all_data():
-    data = load(DATA_FILE)
-
-    if "fleets" not in data:
-        old_shared_fleet = data.get("shared_fleet", [])
-        old_max_fleet = data.get("Max", [])
-
-        if old_shared_fleet:
-            old_data = old_shared_fleet
-        else:
-            old_data = old_max_fleet
-
-        data = {
-            "fleets": {
-                "default": old_data
-            }
-        }
-
-        save(DATA_FILE, data)
-
-    data.setdefault("fleets", {})
-    return data
-
-
-def get_machines(fleet_id=None):
-    fleet_id = fleet_id or current_fleet_id() or "default"
-
-    data = get_all_data()
-    data["fleets"].setdefault(fleet_id, [])
-
-    save(DATA_FILE, data)
-    return data["fleets"][fleet_id]
-
-
-def save_machines(machines, fleet_id=None):
-    fleet_id = fleet_id or current_fleet_id() or "default"
-
-    data = get_all_data()
-    data["fleets"].setdefault(fleet_id, [])
-    data["fleets"][fleet_id] = machines
-
-    save(DATA_FILE, data)
+    sql_execute("""
+        INSERT INTO activities (username, fleet_id, fleet_name, action, details, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s);
+    """, (current_user(), fid, fname, action, details, now_dt()))
 
 
 def unit(machine):
@@ -241,39 +299,30 @@ def unit(machine):
 
 
 def type_name(machine):
-    machine_type = machine.get("type")
-
-    if machine_type == "vehicle":
+    t = machine.get("type")
+    if t == "vehicle":
         return "Fahrzeug"
-
-    if machine_type == "trailer":
+    if t == "trailer":
         return "Gerät / Anhänger"
-
-    if machine_type == "small_device":
+    if t == "small_device":
         return "Kleingerät"
-
     return "Baumaschine"
 
 
 def image_url(machine):
     name = machine.get("name", "").lower()
-    machine_type = machine.get("type", "machine")
+    t = machine.get("type", "machine")
 
     if "stihl" in name or "kettensäge" in name or "motorsäge" in name or "freischneider" in name:
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Chainsaw_Stihl_MS_170.jpg/640px-Chainsaw_Stihl_MS_170.jpg"
-
-    if "rasenmäher" in name or "rüttel" in name or machine_type == "small_device":
+    if "rasenmäher" in name or "rüttel" in name or t == "small_device":
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Plate_compactor.jpg/640px-Plate_compactor.jpg"
-
-    if "anhänger" in name or "demmler" in name or "unsinn" in name or "reisch" in name or machine_type == "trailer":
+    if "anhänger" in name or "demmler" in name or "unsinn" in name or "reisch" in name or t == "trailer":
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Car_trailer.jpg/640px-Car_trailer.jpg"
-
-    if "ford" in name or "transit" in name or "vw" in name or "crafter" in name or machine_type == "vehicle":
+    if "ford" in name or "transit" in name or "vw" in name or "crafter" in name or t == "vehicle":
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Ford_Transit_Connect_%28III%29_IMG_8620.jpg/640px-Ford_Transit_Connect_%28III%29_IMG_8620.jpg"
-
     if "radlader" in name or "zeppelin" in name:
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/CAT_950M_wheel_loader.jpg/640px-CAT_950M_wheel_loader.jpg"
-
     if "deutz" in name or "lamborghini" in name or "traktor" in name:
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Deutz-Fahr_Agrotron_165.7.jpg/640px-Deutz-Fahr_Agrotron_165.7.jpg"
 
@@ -284,14 +333,12 @@ def final_status(machine):
     rest = float(machine["interval"]) - float(machine["current_value"])
 
     service_color = "green"
-
     if rest <= 0:
         service_color = "red"
     elif rest <= 50:
         service_color = "yellow"
 
     note_color = "green"
-
     for note in machine.get("notes", []):
         if note.get("priority") == "red":
             note_color = "red"
@@ -301,53 +348,42 @@ def final_status(machine):
 
     if service_color == "red" or note_color == "red":
         return "red", round(rest, 2)
-
     if service_color == "yellow" or note_color == "yellow":
         return "yellow", round(rest, 2)
-
     return "green", round(rest, 2)
 
 
 def prepare_machines(machines):
-    order = {
-        "red": 0,
-        "yellow": 1,
-        "green": 2
-    }
+    order = {"red": 0, "yellow": 1, "green": 2}
 
-    for machine in machines:
-        machine.setdefault("id", str(time.time()).replace(".", ""))
-        machine.setdefault("license_plate", "")
-        machine.setdefault("tuv", "")
-        machine.setdefault("independent", False)
-        machine.setdefault("attachments", "")
-        machine.setdefault("notes", [])
-        machine.setdefault("history", [])
+    for m in machines:
+        notes = sql_fetchall("SELECT * FROM notes WHERE machine_id = %s ORDER BY id DESC;", (m["id"],))
+        m["notes"] = notes
 
-        if machine.get("type") == "hours":
-            machine["type"] = "machine"
+        if m.get("type") == "hours":
+            m["type"] = "machine"
 
-        color, rest = final_status(machine)
-
-        machine["final_color"] = color
-        machine["rest"] = rest
-        machine["unit"] = unit(machine)
-        machine["type_name"] = type_name(machine)
-        machine["image_url"] = image_url(machine)
+        color, rest = final_status(m)
+        m["final_color"] = color
+        m["rest"] = rest
+        m["unit"] = unit(m)
+        m["type_name"] = type_name(m)
+        m["image_url"] = image_url(m)
 
     return sorted(machines, key=lambda x: (order[x["final_color"]], x["rest"]))
+
+
+def get_machines(fleet_id=None):
+    fid = fleet_id or current_fleet_id() or "default"
+    machines = sql_fetchall("SELECT * FROM machines WHERE fleet_id = %s;", (fid,))
+    return prepare_machines(machines)
 
 
 @app.before_request
 def check_force_logout():
     if "user" in session and not is_admin():
-        meta = load_user_meta()
-        username = session["user"]
-
-        server_token = meta.get(username, {}).get("force_token")
-        session_token = session.get("force_token")
-
-        if server_token and session_token and server_token != session_token:
+        row = sql_fetchone("SELECT force_token FROM users WHERE username = %s;", (session["user"],))
+        if row and session.get("force_token") != row["force_token"]:
             session.clear()
             return redirect("/")
 
@@ -355,8 +391,8 @@ def check_force_logout():
 @app.context_processor
 def inject_global_data():
     return {
-        "fleet_name": current_fleet_name(),
-        "permissions": get_user_permissions() if "user" in session else {},
+        "fleet_name": get_fleet_name(),
+        "permissions": get_permissions() if "user" in session else {},
         "is_admin": is_admin()
     }
 
@@ -373,16 +409,15 @@ def denied():
 
 @app.route("/login", methods=["POST"])
 def login():
-    users = load(USERS_FILE)
-
     username = request.form["username"]
     password = request.form["password"]
 
-    if username in users and users[username] == hash_password(password):
-        meta = load_user_meta()
-        token = meta[username].setdefault("force_token", secrets.token_hex(8))
+    row = sql_fetchone("SELECT * FROM users WHERE username = %s;", (username,))
 
-        save_user_meta(meta)
+    if row and row["password_hash"] == hash_password(password):
+        token = row["force_token"] or secrets.token_hex(8)
+
+        sql_execute("UPDATE users SET force_token = %s WHERE username = %s;", (token, username))
 
         session["user"] = username
         session["admin"] = False
@@ -390,7 +425,6 @@ def login():
         session.pop("fleet_id", None)
 
         log_action("Login", "Benutzer hat sich angemeldet.")
-
         return redirect("/fleet-select")
 
     return redirect("/denied")
@@ -402,46 +436,40 @@ def admin_login():
         session["user"] = "Admin"
         session["admin"] = True
         session["fleet_id"] = "default"
-
-        log_action("Admin-Login", "Admin hat sich angemeldet.")
-
-        return redirect("/admin")
+        return redirect("/admin/fleets")
 
     return redirect("/denied")
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    users = load(USERS_FILE)
-
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
 
-        if username in users:
+        exists = sql_fetchone("SELECT username FROM users WHERE username = %s;", (username,))
+        if exists:
             return "Benutzer existiert bereits"
 
-        users[username] = hash_password(password)
-        save(USERS_FILE, users)
+        token = secrets.token_hex(8)
 
-        meta = load_user_meta()
-
-        meta[username] = {
-            "role": "Baustelle",
-            "custom_role": "",
-            "permissions": DEFAULT_PERMISSIONS.copy(),
-            "force_token": secrets.token_hex(8)
-        }
-
-        save_user_meta(meta)
+        sql_execute("""
+            INSERT INTO users (
+                username, password_hash, role, custom_role,
+                perm_create_machines, perm_send_reports, perm_do_service, force_token
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+        """, (
+            username, hash_password(password), "Baustelle", "",
+            False, True, False, token
+        ))
 
         session["user"] = username
         session["admin"] = False
-        session["force_token"] = meta[username]["force_token"]
+        session["force_token"] = token
         session.pop("fleet_id", None)
 
         log_action("Registrierung", f"Benutzer '{username}' wurde erstellt.")
-
         return redirect("/fleet-select")
 
     return render_template("register.html")
@@ -451,32 +479,23 @@ def register():
 def fleet_select():
     if "user" not in session:
         return redirect("/")
-
     if is_admin():
-        return redirect("/admin")
+        return redirect("/admin/fleets")
 
-    return render_template("fleet_select.html", fleets=load_fleets())
+    fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;")
+    return render_template("fleet_select.html", fleets=fleets)
 
 
 @app.route("/join-fleet", methods=["POST"])
 def join_fleet():
-    if "user" not in session:
-        return redirect("/")
-
     fleet_id = request.form["fleet_id"]
-    fleet_password = request.form["fleet_password"]
+    password = request.form["fleet_password"]
 
-    fleets = load_fleets()
+    fleet = sql_fetchone("SELECT * FROM fleets WHERE id = %s;", (fleet_id,))
 
-    if fleet_id in fleets and fleets[fleet_id]["password_hash"] == hash_password(fleet_password):
+    if fleet and fleet["password_hash"] == hash_password(password):
         session["fleet_id"] = fleet_id
-
-        log_action(
-            "Fuhrpark gewählt",
-            f"Benutzer ist Fuhrpark '{fleets[fleet_id]['name']}' beigetreten.",
-            fleet_id
-        )
-
+        log_action("Fuhrpark gewählt", f"Benutzer ist Fuhrpark '{fleet['name']}' beigetreten.", fleet_id)
         return redirect("/dashboard")
 
     return redirect("/denied")
@@ -486,31 +505,21 @@ def join_fleet():
 def dashboard():
     if "user" not in session:
         return redirect("/")
-
     if not current_fleet_id():
         return redirect("/fleet-select")
 
-    machines = prepare_machines(get_machines())
+    machines = get_machines()
+    red = len([m for m in machines if m["final_color"] == "red"])
+    yellow = len([m for m in machines if m["final_color"] == "yellow"])
+    green = len([m for m in machines if m["final_color"] == "green"])
 
-    red = len([machine for machine in machines if machine["final_color"] == "red"])
-    yellow = len([machine for machine in machines if machine["final_color"] == "yellow"])
-    green = len([machine for machine in machines if machine["final_color"] == "green"])
-
-    return render_template(
-        "dashboard.html",
-        user=current_user(),
-        machines=machines,
-        red=red,
-        yellow=yellow,
-        green=green
-    )
+    return render_template("dashboard.html", user=current_user(), machines=machines, red=red, yellow=yellow, green=green)
 
 
 @app.route("/machines", methods=["GET", "POST"])
 def machines():
     if "user" not in session:
         return redirect("/")
-
     if not current_fleet_id():
         return redirect("/fleet-select")
 
@@ -518,413 +527,343 @@ def machines():
         if not has_perm("create_machines"):
             return "Keine Berechtigung: Maschinen anlegen"
 
-        machines_data = get_machines()
+        machine_id = str(time.time()).replace(".", "")
 
-        machine = {
-            "id": str(time.time()).replace(".", ""),
-            "name": request.form["name"],
-            "type": request.form["type"],
-            "license_plate": request.form.get("license_plate", ""),
-            "tuv": request.form.get("tuv", ""),
-            "current_value": float(request.form["current_value"]),
-            "interval": float(request.form["interval"]),
-            "responsible": request.form["responsible"],
-            "current_location": request.form["current_location"],
-            "independent": "independent" in request.form,
-            "attachments": request.form["attachments"],
-            "notes": [],
-            "history": []
-        }
+        sql_execute("""
+            INSERT INTO machines (
+                id, fleet_id, name, type, license_plate, tuv,
+                current_value, interval, responsible,
+                current_location, independent, attachments
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+        """, (
+            machine_id,
+            current_fleet_id(),
+            request.form["name"],
+            request.form["type"],
+            request.form.get("license_plate", ""),
+            request.form.get("tuv", ""),
+            float(request.form["current_value"]),
+            float(request.form["interval"]),
+            request.form["responsible"],
+            request.form["current_location"],
+            "independent" in request.form,
+            request.form["attachments"]
+        ))
 
-        machines_data.append(machine)
-        save_machines(machines_data)
+        log_action("Eintrag angelegt", f"{request.form['name']} wurde angelegt.")
 
-        log_action(
-            "Eintrag angelegt",
-            f"{machine['name']} | {type_name(machine)} | Stand: {machine['current_value']} {unit(machine)}"
-        )
-
-    return render_template(
-        "machines.html",
-        machines=prepare_machines(get_machines()),
-        edit_machine=None
-    )
+    return render_template("machines.html", machines=get_machines(), edit_machine=None)
 
 
 @app.route("/edit-machine/<machine_id>", methods=["GET", "POST"])
 def edit_machine(machine_id):
     if "user" not in session:
         return redirect("/")
-
-    if not current_fleet_id():
-        return redirect("/fleet-select")
-
     if not has_perm("create_machines"):
         return "Keine Berechtigung: Maschinen bearbeiten"
 
-    machines_data = get_machines()
-    machine = next((m for m in machines_data if m["id"] == machine_id), None)
-
-    if machine is None:
+    machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
+    if not machine:
         return "Eintrag nicht gefunden"
 
     if request.method == "POST":
-        old = machine.copy()
+        sql_execute("""
+            UPDATE machines SET
+                name=%s, type=%s, license_plate=%s, tuv=%s,
+                current_value=%s, interval=%s, responsible=%s,
+                current_location=%s, independent=%s, attachments=%s
+            WHERE id=%s;
+        """, (
+            request.form["name"],
+            request.form["type"],
+            request.form.get("license_plate", ""),
+            request.form.get("tuv", ""),
+            float(request.form["current_value"]),
+            float(request.form["interval"]),
+            request.form["responsible"],
+            request.form["current_location"],
+            "independent" in request.form,
+            request.form["attachments"],
+            machine_id
+        ))
 
-        machine["name"] = request.form["name"]
-        machine["type"] = request.form["type"]
-        machine["license_plate"] = request.form.get("license_plate", "")
-        machine["tuv"] = request.form.get("tuv", "")
-        machine["current_value"] = float(request.form["current_value"])
-        machine["interval"] = float(request.form["interval"])
-        machine["responsible"] = request.form["responsible"]
-        machine["current_location"] = request.form["current_location"]
-        machine["independent"] = "independent" in request.form
-        machine["attachments"] = request.form["attachments"]
-
-        save_machines(machines_data)
-
-        log_action(
-            "Eintrag bearbeitet",
-            f"{old.get('name')} → {machine['name']} | Stand: {old.get('current_value')} → {machine['current_value']}"
-        )
-
+        log_action("Eintrag bearbeitet", f"{machine['name']} → {request.form['name']}")
         return redirect("/machines")
 
-    return render_template(
-        "machines.html",
-        machines=prepare_machines(machines_data),
-        edit_machine=machine
-    )
+    return render_template("machines.html", machines=get_machines(), edit_machine=machine)
 
 
 @app.route("/reports", methods=["GET", "POST"])
 def reports():
     if "user" not in session:
         return redirect("/")
-
     if not current_fleet_id():
         return redirect("/fleet-select")
-
     if not has_perm("send_reports"):
         return "Keine Berechtigung: Tagesberichte senden"
-
-    machines_data = get_machines()
 
     if request.method == "POST":
         machine_id = request.form["machine_id"]
 
-        new_value_input = request.form.get("new_value", "").strip()
-        approx_value_input = request.form.get("approx_value", "").strip()
+        exact = request.form.get("new_value", "").strip()
+        approx = request.form.get("approx_value", "").strip()
 
-        if not new_value_input and not approx_value_input:
+        if not exact and not approx:
             return "Bitte exakten oder ungefähren Stand eintragen."
 
-        if new_value_input:
-            new_value = float(new_value_input)
+        if exact:
+            new_value = float(exact)
             value_type = "exakt"
         else:
-            new_value = float(approx_value_input)
+            new_value = float(approx)
             value_type = "ungefähr"
 
-        note = request.form["note"]
-        priority = request.form["priority"]
+        machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
+        old_value = machine["current_value"]
+        old_location = machine["current_location"]
 
         location_change = "location_change" in request.form
         selected_location = request.form.get("selected_location", "")
         new_location_select = request.form.get("new_location_select", "")
         new_location_text = request.form.get("new_location_text", "").strip()
-        independent = "independent" in request.form
 
-        for machine in machines_data:
-            if machine["id"] == machine_id:
-                old_value = machine["current_value"]
-                old_location = machine["current_location"]
+        if location_change:
+            final_location = new_location_text if new_location_text else new_location_select
+        else:
+            final_location = selected_location
 
-                if location_change:
-                    final_location = new_location_text if new_location_text else new_location_select
-                else:
-                    final_location = selected_location
+        sql_execute("""
+            UPDATE machines SET current_value=%s, current_location=%s, independent=%s
+            WHERE id=%s;
+        """, (new_value, final_location, "independent" in request.form, machine_id))
 
-                machine["current_value"] = new_value
-                machine["current_location"] = final_location
-                machine["independent"] = independent
+        note = request.form["note"]
+        priority = request.form["priority"]
 
-                if note.strip():
-                    machine["notes"].append({
-                        "text": note,
-                        "priority": priority,
-                        "location": final_location,
-                        "independent": independent,
-                        "created_by": current_user(),
-                        "created_at": now_str(),
-                        "value_type": value_type
-                    })
-
-                machine["history"].append({
-                    "user": current_user(),
-                    "new_value": new_value,
-                    "value_type": value_type,
-                    "note": note,
-                    "priority": priority,
-                    "old_location": old_location,
-                    "new_location": final_location,
-                    "location_change": location_change,
-                    "time": now_str()
-                })
-
-                log_action(
-                    "Tagesbericht",
-                    f"{machine['name']} | Stand: {old_value} → {new_value} ({value_type}) | Standort: {old_location} → {final_location} | Notiz: {note}"
+        if note.strip():
+            sql_execute("""
+                INSERT INTO notes (
+                    machine_id, text, priority, location, independent,
+                    created_by, created_at, value_type
                 )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s);
+            """, (
+                machine_id, note, priority, final_location,
+                "independent" in request.form, current_user(), now_dt(), value_type
+            ))
 
-                break
+        sql_execute("""
+            INSERT INTO histories (
+                machine_id, username, action, new_value, value_type,
+                note, priority, old_location, new_location,
+                location_change, created_at
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+        """, (
+            machine_id, current_user(), "Tagesbericht",
+            new_value, value_type, note, priority,
+            old_location, final_location, location_change, now_dt()
+        ))
 
-        save_machines(machines_data)
+        log_action(
+            "Tagesbericht",
+            f"{machine['name']} | Stand: {old_value} → {new_value} ({value_type}) | Standort: {old_location} → {final_location}"
+        )
 
-    machines_prepared = prepare_machines(machines_data)
+    machines_list = get_machines()
+    locations = sorted({m["current_location"] for m in machines_list if m.get("current_location")}, key=lambda x: x.lower())
 
-    locations = sorted(
-        {machine["current_location"] for machine in machines_prepared if machine.get("current_location")},
-        key=lambda x: x.lower()
-    )
-
-    return render_template(
-        "reports.html",
-        machines=machines_prepared,
-        locations=locations
-    )
+    return render_template("reports.html", machines=machines_list, locations=locations)
 
 
 @app.route("/service")
 def service():
     if "user" not in session:
         return redirect("/")
-
     if not current_fleet_id():
         return redirect("/fleet-select")
-
     if not has_perm("do_service"):
         return "Keine Berechtigung: Service durchführen"
 
-    machines_data = prepare_machines(get_machines())
-
+    machines_data = get_machines()
     sort_by = request.args.get("sort_by", "status")
     filter_value = request.args.get("filter", "").strip().lower()
 
     if filter_value:
-        machines_data = [
-            machine for machine in machines_data
-            if filter_value in str(machine.get(sort_by, "")).lower()
-        ]
+        machines_data = [m for m in machines_data if filter_value in str(m.get(sort_by, "")).lower()]
 
-    if sort_by == "type":
-        machines_data = sorted(machines_data, key=lambda machine: (machine["type_name"].lower(), machine["rest"]))
-    elif sort_by == "responsible":
-        machines_data = sorted(machines_data, key=lambda machine: (machine["responsible"].lower(), machine["rest"]))
-    elif sort_by == "current_location":
-        machines_data = sorted(machines_data, key=lambda machine: (machine["current_location"].lower(), machine["rest"]))
-
-    return render_template(
-        "service.html",
-        machines=machines_data,
-        sort_by=sort_by,
-        filter_value=filter_value
-    )
+    return render_template("service.html", machines=machines_data, sort_by=sort_by, filter_value=filter_value)
 
 
 @app.route("/service-check/<machine_id>")
 def service_check(machine_id):
     if "user" not in session:
         return redirect("/")
-
-    if not current_fleet_id():
-        return redirect("/fleet-select")
-
     if not has_perm("do_service"):
         return "Keine Berechtigung: Service durchführen"
 
-    machine = next((m for m in get_machines() if m["id"] == machine_id), None)
-
-    if machine is None:
+    machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
+    if not machine:
         return "Eintrag nicht gefunden"
 
     machine = prepare_machines([machine])[0]
     checklist = CHECKLISTS.get(machine.get("type", "machine"), CHECKLISTS["machine"])
 
-    return render_template(
-        "service_check.html",
-        machine=machine,
-        checklist=checklist
-    )
+    return render_template("service_check.html", machine=machine, checklist=checklist)
 
 
 @app.route("/service-done/<machine_id>", methods=["POST"])
 def service_done(machine_id):
     if "user" not in session:
         return redirect("/")
-
     if not has_perm("do_service"):
         return "Keine Berechtigung"
 
-    machines_data = get_machines()
-    settings = load_settings()
+    machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
+    settings = get_settings()
+    increase = float(settings.get(machine["type"], 500))
+
+    sql_execute("UPDATE machines SET interval = interval + %s WHERE id = %s;", (increase, machine_id))
 
     resolved_indexes = [int(i) for i in request.form.getlist("resolved_notes")]
-    checked_items = request.form.getlist("checklist")
+    notes = sql_fetchall("SELECT * FROM notes WHERE machine_id = %s ORDER BY id DESC;", (machine_id,))
+
+    for index in resolved_indexes:
+        if index < len(notes):
+            sql_execute("DELETE FROM notes WHERE id = %s;", (notes[index]["id"],))
+
     new_note = request.form.get("new_note", "").strip()
-    new_note_priority = request.form.get("new_note_priority", "green")
+    if new_note:
+        sql_execute("""
+            INSERT INTO notes (machine_id, text, priority, location, independent, created_by, created_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s);
+        """, (
+            machine_id,
+            new_note,
+            request.form.get("new_note_priority", "green"),
+            machine.get("current_location", ""),
+            machine.get("independent", False),
+            current_user(),
+            now_dt()
+        ))
 
-    for machine in machines_data:
-        if machine["id"] == machine_id:
-            machine_type = machine.get("type", "machine")
-            increase = float(settings.get(machine_type, DEFAULT_SETTINGS.get(machine_type, 500)))
-
-            old_interval = machine["interval"]
-            old_notes = len(machine.get("notes", []))
-
-            machine["interval"] = float(machine["interval"]) + increase
-
-            machine["notes"] = [
-                note for index, note in enumerate(machine.get("notes", []))
-                if index not in resolved_indexes
-            ]
-
-            if new_note:
-                machine["notes"].append({
-                    "text": new_note,
-                    "priority": new_note_priority,
-                    "location": machine.get("current_location", ""),
-                    "independent": machine.get("independent", False),
-                    "created_by": current_user(),
-                    "created_at": now_str()
-                })
-
-            machine["history"].append({
-                "user": current_user(),
-                "service": "Service erledigt",
-                "increase": increase,
-                "checked_items": checked_items,
-                "resolved_notes": resolved_indexes,
-                "time": now_str()
-            })
-
-            log_action(
-                "Service erledigt",
-                f"{machine['name']} | Intervall: {old_interval} → {machine['interval']} | erledigte Notizen: {len(resolved_indexes)} von {old_notes}"
-            )
-
-            break
-
-    save_machines(machines_data)
+    log_action("Service erledigt", f"{machine['name']} | Intervall erhöht um {increase}")
 
     return redirect("/service")
 
 
-@app.route("/admin", methods=["GET", "POST"])
+@app.route("/admin")
 def admin():
     if not is_admin():
         return redirect("/dashboard")
+    return redirect("/admin/fleets")
 
-    fleets = load_fleets()
-    users = load(USERS_FILE)
-    meta = load_user_meta()
+
+@app.route("/admin/fleets", methods=["GET", "POST"])
+def admin_fleets():
+    if not is_admin():
+        return redirect("/dashboard")
 
     if request.method == "POST":
         action = request.form.get("action")
 
         if action == "create_fleet":
             fleet_id = "fleet_" + str(time.time()).replace(".", "")
-
-            fleets[fleet_id] = {
-                "name": request.form["fleet_name"],
-                "password_hash": hash_password(request.form["fleet_password"])
-            }
-
-            save(FLEETS_FILE, fleets)
-
-            log_action(
-                "Fuhrpark angelegt",
-                f"Name: {request.form['fleet_name']}"
-            )
+            sql_execute("""
+                INSERT INTO fleets (id, name, password_hash, profile_image)
+                VALUES (%s,%s,%s,%s);
+            """, (
+                fleet_id,
+                request.form["fleet_name"],
+                hash_password(request.form["fleet_password"]),
+                request.form.get("profile_image", "")
+            ))
 
         elif action == "update_fleet":
             fleet_id = request.form["fleet_id"]
 
-            if fleet_id in fleets:
-                old_name = fleets[fleet_id]["name"]
-                fleets[fleet_id]["name"] = request.form["fleet_name"]
+            if request.form.get("fleet_password"):
+                sql_execute("""
+                    UPDATE fleets SET name=%s, password_hash=%s, profile_image=%s
+                    WHERE id=%s;
+                """, (
+                    request.form["fleet_name"],
+                    hash_password(request.form["fleet_password"]),
+                    request.form.get("profile_image", ""),
+                    fleet_id
+                ))
+            else:
+                sql_execute("""
+                    UPDATE fleets SET name=%s, profile_image=%s
+                    WHERE id=%s;
+                """, (
+                    request.form["fleet_name"],
+                    request.form.get("profile_image", ""),
+                    fleet_id
+                ))
 
-                if request.form.get("fleet_password"):
-                    fleets[fleet_id]["password_hash"] = hash_password(request.form["fleet_password"])
+        return redirect("/admin/fleets")
 
-                save(FLEETS_FILE, fleets)
+    fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;")
+    return render_template("admin_fleets.html", fleets=fleets)
 
-                log_action(
-                    "Fuhrpark geändert",
-                    f"{old_name} → {fleets[fleet_id]['name']}"
-                )
 
-        elif action == "update_user":
-            username = request.form["username"]
+@app.route("/admin/users", methods=["GET", "POST"])
+def admin_users():
+    if not is_admin():
+        return redirect("/dashboard")
 
-            meta.setdefault(username, {})
-            meta[username]["role"] = request.form.get("role", "Baustelle")
-            meta[username]["custom_role"] = request.form.get("custom_role", "")
-            meta[username]["permissions"] = {
-                "create_machines": "create_machines" in request.form,
-                "send_reports": "send_reports" in request.form,
-                "do_service": "do_service" in request.form
-            }
-            meta[username].setdefault("force_token", secrets.token_hex(8))
+    if request.method == "POST":
+        action = request.form.get("action")
+        username = request.form.get("username")
 
-            save_user_meta(meta)
-
-            log_action(
-                "User-Rechte geändert",
-                f"{username}: {meta[username]}"
-            )
+        if action == "update_user":
+            sql_execute("""
+                UPDATE users SET
+                    role=%s,
+                    custom_role=%s,
+                    perm_create_machines=%s,
+                    perm_send_reports=%s,
+                    perm_do_service=%s
+                WHERE username=%s;
+            """, (
+                request.form.get("role", "Baustelle"),
+                request.form.get("custom_role", ""),
+                "create_machines" in request.form,
+                "send_reports" in request.form,
+                "do_service" in request.form,
+                username
+            ))
 
         elif action == "force_logout":
-            username = request.form["username"]
+            sql_execute("UPDATE users SET force_token=%s WHERE username=%s;", (secrets.token_hex(16), username))
 
-            meta.setdefault(username, {})
-            meta[username]["force_token"] = secrets.token_hex(16)
+        return redirect("/admin/users")
 
-            save_user_meta(meta)
+    users = sql_fetchall("SELECT * FROM users ORDER BY username ASC;")
+    return render_template("admin_users.html", users=users)
 
-            log_action(
-                "User rausgeworfen",
-                f"{username} wurde zwangsweise ausgeloggt."
-            )
 
-        return redirect("/admin")
+@app.route("/admin/activity", methods=["GET", "POST"])
+def admin_activity():
+    if not is_admin():
+        return redirect("/dashboard")
+
+    if request.method == "POST":
+        if request.form.get("action") == "clear_activity":
+            sql_execute("DELETE FROM activities;")
+        return redirect("/admin/activity")
 
     filter_user = request.args.get("user", "")
-
-    logs = load(LOG_FILE)
-
-    if not isinstance(logs, list):
-        logs = []
+    users = sql_fetchall("SELECT username FROM users ORDER BY username ASC;")
 
     if filter_user:
-        logs = [log for log in logs if log.get("user") == filter_user]
+        logs = sql_fetchall("SELECT * FROM activities WHERE username=%s ORDER BY created_at DESC;", (filter_user,))
+    else:
+        logs = sql_fetchall("SELECT * FROM activities ORDER BY created_at DESC LIMIT 500;")
 
-    all_data = get_all_data()
-    prepared_by_fleet = {}
-
-    for fleet_id, machines in all_data.get("fleets", {}).items():
-        prepared_by_fleet[fleet_id] = prepare_machines(machines)
-
-    return render_template(
-        "admin.html",
-        logs=logs,
-        users=users,
-        user_meta=meta,
-        fleets=fleets,
-        all_data=prepared_by_fleet,
-        filter_user=filter_user
-    )
+    return render_template("admin_activity.html", logs=logs, users=users, filter_user=filter_user)
 
 
 @app.route("/settings", methods=["GET", "POST"])
@@ -932,29 +871,16 @@ def settings():
     if not is_admin():
         return redirect("/dashboard")
 
-    settings_data = load_settings()
+    settings_data = get_settings()
 
     if request.method == "POST":
-        old = settings_data.copy()
-
-        settings_data["machine"] = float(request.form["machine"])
-        settings_data["vehicle"] = float(request.form["vehicle"])
-        settings_data["trailer"] = float(request.form["trailer"])
-        settings_data["small_device"] = float(request.form["small_device"])
-
-        save(SETTINGS_FILE, settings_data)
-
-        log_action(
-            "Service-Intervalle geändert",
-            f"Vorher: {old} | Nachher: {settings_data}"
-        )
-
+        set_setting("machine", request.form["machine"])
+        set_setting("vehicle", request.form["vehicle"])
+        set_setting("trailer", request.form["trailer"])
+        set_setting("small_device", request.form["small_device"])
         return redirect("/settings")
 
-    return render_template(
-        "settings.html",
-        settings=settings_data
-    )
+    return render_template("settings.html", settings=settings_data)
 
 
 @app.route("/delete-all", methods=["POST"])
@@ -966,16 +892,11 @@ def delete_all():
         return redirect("/denied")
 
     fleet_id = request.form.get("fleet_id", "default")
-    deleted_count = len(get_machines(fleet_id))
+    sql_execute("DELETE FROM notes WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);", (fleet_id,))
+    sql_execute("DELETE FROM histories WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);", (fleet_id,))
+    sql_execute("DELETE FROM machines WHERE fleet_id=%s;", (fleet_id,))
 
-    save_machines([], fleet_id)
-
-    log_action(
-        "Fuhrpark gelöscht",
-        f"Fuhrpark: {fleet_id}, gelöschte Einträge: {deleted_count}"
-    )
-
-    return redirect("/admin")
+    return redirect("/admin/fleets")
 
 
 @app.route("/logout")
@@ -984,6 +905,8 @@ def logout():
     session.clear()
     return redirect("/")
 
+
+init_db()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
