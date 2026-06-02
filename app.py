@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session
-import os, hashlib, time, secrets
+import os, hashlib, time, secrets, json, base64
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import psycopg2
@@ -440,6 +440,70 @@ def admin_login():
 
     return redirect("/denied")
 
+@app.route("/admin/migrate-json-to-fleet", methods=["POST"])
+def migrate_json_to_fleet():
+    if not is_admin():
+        return redirect("/dashboard")
+
+    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
+        return redirect("/denied")
+
+    fleet_id = request.form["fleet_id"]
+    old_machines = load_old_json_machines()
+
+    imported = 0
+
+    for old in old_machines:
+        machine_id = str(old.get("id") or time.time()).replace(".", "") + str(imported)
+
+        exists = sql_fetchone("SELECT id FROM machines WHERE id = %s;", (machine_id,))
+        if exists:
+            continue
+
+        sql_execute("""
+            INSERT INTO machines (
+                id, fleet_id, name, type, license_plate, tuv,
+                current_value, interval, responsible,
+                current_location, independent, attachments
+            )
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+        """, (
+            machine_id,
+            fleet_id,
+            old.get("name", "Unbenannt"),
+            old.get("type", "machine"),
+            old.get("license_plate", ""),
+            old.get("tuv", ""),
+            float(old.get("current_value", 0)),
+            float(old.get("interval", 500)),
+            old.get("responsible", ""),
+            old.get("current_location", ""),
+            old.get("independent", False),
+            old.get("attachments", "")
+        ))
+
+        for note in old.get("notes", []):
+            sql_execute("""
+                INSERT INTO notes (
+                    machine_id, text, priority, location, independent,
+                    created_by, created_at, value_type
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s);
+            """, (
+                machine_id,
+                note.get("text", ""),
+                note.get("priority", "green"),
+                note.get("location", ""),
+                note.get("independent", False),
+                note.get("created_by", "Altbestand"),
+                now_dt(),
+                note.get("value_type", "")
+            ))
+
+        imported += 1
+
+    return redirect("/admin/fleets")
+
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -484,7 +548,39 @@ def fleet_select():
 
     fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;")
     return render_template("fleet_select.html", fleets=fleets)
+def uploaded_image_to_data_url(file):
+    if not file or file.filename == "":
+        return ""
 
+    data = file.read()
+
+    if len(data) > 2_500_000:
+        return ""
+
+    mime = file.mimetype or "image/jpeg"
+    encoded = base64.b64encode(data).decode("utf-8")
+
+    return f"data:{mime};base64,{encoded}"
+
+
+def load_old_json_machines():
+    if not os.path.exists("data.json"):
+        return []
+
+    with open("data.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if "fleets" in data:
+        if "default" in data["fleets"]:
+            return data["fleets"]["default"]
+
+    if "shared_fleet" in data:
+        return data["shared_fleet"]
+
+    if "Max" in data:
+        return data["Max"]
+
+    return []
 
 @app.route("/join-fleet", methods=["POST"])
 def join_fleet():
