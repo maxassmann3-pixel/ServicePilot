@@ -64,11 +64,7 @@
         <textarea name="attachments">{{ edit_machine.attachments if edit_machine else '' }}</textarea>
 
         <button class="btn">
-            {% if edit_machine %}
-                Änderungen speichern
-            {% else %}
-                Eintrag anlegen
-            {% endif %}
+            {% if edit_machine %}Änderungen speichern{% else %}Eintrag anlegen{% endif %}
         </button>
     </form>
 </div>
@@ -79,7 +75,16 @@
     {% for m in machines %}
     <div class="machine-card">
 
-        <img src="{{ m.image_url }}" alt="{{ m.name }}" onerror="this.src='/static/img/servicepilot_logo.png'">
+        {% if m.image_url %}
+            <img src="{{ m.image_url }}" alt="{{ m.name }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="machine-placeholder hidden-placeholder">
+                {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
+            </div>
+        {% else %}
+            <div class="machine-placeholder">
+                {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
+            </div>
+        {% endif %}
 
         <div class="machine-card-body">
             {% if m.final_color == "red" %}
@@ -135,7 +140,7 @@
 
                             {% if n.photo %}
                                 <br>
-                                <img src="{{ n.photo }}" style="width:100%; max-height:120px; object-fit:cover; border-radius:12px; margin-top:8px;">
+                                <img src="{{ n.photo }}" class="note-photo">
                             {% endif %}
                         </div>
                     {% endfor %}
