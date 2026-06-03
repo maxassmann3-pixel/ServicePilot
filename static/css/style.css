@@ -626,3 +626,43 @@ tr td:last-child{
         max-height:160px;
     }
 }
+.sidebar-logo{
+    margin-bottom:26px !important;
+}
+
+.machine-card img,
+.fleet-profile-img{
+    width:100%;
+    height:165px;
+    max-height:165px;
+    object-fit:cover;
+    border-radius:18px 18px 0 0;
+    background:rgba(255,255,255,0.06);
+}
+
+.machine-card img[src*="servicepilot_logo"]{
+    object-fit:contain;
+    padding:22px;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    right:2%;
+    bottom:3%;
+    width:360px;
+    height:260px;
+    background:url("/static/img/servicepilot_logo.png") no-repeat center;
+    background-size:contain;
+    opacity:0.035;
+    pointer-events:none;
+    z-index:-1;
+}
+
+.mini-note img{
+    width:100%;
+    max-height:150px;
+    object-fit:cover;
+    border-radius:14px;
+    margin-top:8px;
+}

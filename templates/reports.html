@@ -5,18 +5,20 @@
 <div class="header">
     <div>
         <h1>Tagesbericht (Mitarbeiter)</h1>
-        <p>Aktuellen oder ungefähren Stand, Standort und Mängel erfassen.</p>
+        <p>Aktuellen Stand, gefahrene Stunden/Kilometer, Standort und Mängel erfassen.</p>
     </div>
 </div>
 
 <div class="card">
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
 
         <label>Maschine auswählen</label>
-        <select name="machine_id" id="machineSelect" required onchange="showCurrentLocation()">
+        <select name="machine_id" id="machineSelect" required onchange="showCurrentMachineInfo()">
             {% for m in machines %}
             <option value="{{ m.id }}"
-                    data-location="{% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}">
+                    data-location="{% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}"
+                    data-unit="{{ m.unit }}"
+                    data-type="{{ m.type }}">
                 {{ m.name }} — aktuell {{ m.current_value }} {{ m.unit }}
             </option>
             {% endfor %}
@@ -27,11 +29,11 @@
             <span id="currentLocationDisplay">—</span>
         </div>
 
-        <label>Exakter aktueller Stand</label>
-        <input name="new_value" type="number" step="0.1" placeholder="z. B. 3650.4">
+        <label id="exactValueLabel">Aktueller Betriebsstundenstand / Kilometerstand</label>
+        <input name="new_value" type="number" step="0.1" placeholder="z. B. 1250.5">
 
-        <label>Ungefährer Stand, falls nicht exakt bekannt</label>
-        <input name="approx_value" type="number" step="0.1" placeholder="z. B. ca. 3650">
+        <label>Falls Betriebsstunden/Kilometerstand nicht exakt bekannt: hier heute gefahrene Stunden/Kilometer eintragen</label>
+        <input name="today_used" type="number" step="0.1" placeholder="z. B. 6 h oder 80 km">
 
         <small>Ein Feld von beiden muss ausgefüllt werden.</small>
 
@@ -69,6 +71,9 @@
         <label>Mangel / Notiz</label>
         <textarea name="note" placeholder="Einzelner Mangel / Notiz"></textarea>
 
+        <label>Foto zum Mangel aus Galerie hochladen</label>
+        <input name="note_photo_file" type="file" accept="image/*">
+
         <label>Priorität</label>
         <select name="priority">
             <option value="green">🟢 Grün – Hinweis</option>
@@ -81,18 +86,25 @@
 </div>
 
 <script>
-function showCurrentLocation(){
+function showCurrentMachineInfo(){
     const select = document.getElementById("machineSelect");
     const display = document.getElementById("currentLocationDisplay");
+    const label = document.getElementById("exactValueLabel");
 
     if(select && display){
         const selectedOption = select.options[select.selectedIndex];
         display.textContent = selectedOption.dataset.location || "—";
+
+        if(selectedOption.dataset.type === "vehicle"){
+            label.textContent = "Aktueller Kilometerstand";
+        }else{
+            label.textContent = "Aktueller Betriebsstundenstand";
+        }
     }
 }
 
 window.addEventListener("load", function(){
-    showCurrentLocation();
+    showCurrentMachineInfo();
 });
 </script>
 

@@ -6,7 +6,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
-app.secret_key = "servicepilot_postgres_v2"
+app.secret_key = "servicepilot_postgres_v3"
 
 ADMIN_PASSWORD = "admin123"
 BERLIN = ZoneInfo("Europe/Berlin")
@@ -23,41 +23,6 @@ DEFAULT_SETTINGS = {
     "vehicle": 15000,
     "trailer": 500,
     "small_device": 100
-}
-
-CHECKLISTS = {
-    "machine": [
-        "Motorölstand geprüft", "Motoröl gewechselt", "Ölfilter gewechselt",
-        "Hydraulikölstand geprüft", "Hydrauliköl gewechselt falls fällig",
-        "Hydraulikfilter geprüft / gewechselt", "Kühlflüssigkeit geprüft",
-        "Luftfilter geprüft / gereinigt", "Kraftstofffilter geprüft / gewechselt",
-        "Hydraulikleitungen auf Undichtigkeiten geprüft", "Zylinder / Bolzen geprüft",
-        "Laufwerk / Ketten / Reifen geprüft", "Maschine abgeschmiert",
-        "Beleuchtung geprüft", "Scheiben / Spiegel geprüft",
-        "Anbaugerät / Schnellwechsler geprüft"
-    ],
-    "vehicle": [
-        "Motorölstand geprüft", "Motoröl gewechselt", "Ölfilter gewechselt",
-        "Kühlflüssigkeit geprüft", "Bremsflüssigkeit geprüft",
-        "Scheibenwaschwasser aufgefüllt", "Reifendruck geprüft",
-        "Reifenprofil geprüft", "Beleuchtung geprüft", "Bremsen geprüft",
-        "Innenraumfilter geprüft", "Kraftstofffilter geprüft",
-        "TÜV / Kennzeichen geprüft", "Warndreieck / Verbandkasten geprüft"
-    ],
-    "trailer": [
-        "Reifen geprüft", "Reifendruck geprüft", "Beleuchtung geprüft",
-        "Stecker / Kabel geprüft", "Kupplung geprüft", "Auflaufbremse geprüft",
-        "Handbremse geprüft", "Radlager geprüft", "Rahmen / Aufbau geprüft",
-        "Ladefläche geprüft", "Zurrpunkte geprüft", "Schmierstellen abgeschmiert",
-        "Hydrauliköl geprüft falls vorhanden", "TÜV / Kennzeichen geprüft"
-    ],
-    "small_device": [
-        "Motoröl geprüft", "Motoröl gewechselt falls nötig", "Kraftstoff geprüft",
-        "Luftfilter gereinigt / gewechselt", "Zündkerze geprüft / gewechselt",
-        "Kraftstofffilter geprüft", "Kette / Messer / Trennscheibe geprüft",
-        "Schutzhaube geprüft", "Griffe / Gashebel geprüft", "Starter geprüft",
-        "Getriebe / Schmierung geprüft", "Gerät gereinigt", "Schrauben / Muttern geprüft"
-    ]
 }
 
 
@@ -90,10 +55,6 @@ def sql_execute(query, params=()):
 
 def now_dt():
     return datetime.now(BERLIN)
-
-
-def now_str():
-    return now_dt().strftime("%d.%m.%Y %H:%M:%S")
 
 
 def hash_password(password):
@@ -184,8 +145,14 @@ def init_db():
                     independent BOOLEAN DEFAULT FALSE,
                     created_by TEXT DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    value_type TEXT DEFAULT ''
+                    value_type TEXT DEFAULT '',
+                    photo TEXT DEFAULT ''
                 );
+            """)
+
+            cur.execute("""
+                ALTER TABLE notes
+                ADD COLUMN IF NOT EXISTS photo TEXT DEFAULT '';
             """)
 
             cur.execute("""
@@ -337,26 +304,31 @@ def default_machine_image(machine):
     name = machine.get("name", "").lower()
     t = machine.get("type", "machine")
 
+    if machine.get("custom_image"):
+        return machine.get("custom_image")
+
+    if "liebherr" in name and ("bagger" in name or "r9" in name or "r 9" in name):
+        return "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Liebherr_934_Hydraulic_Excavator.jpg/640px-Liebherr_934_Hydraulic_Excavator.jpg"
+
+    if "radlader" in name or "wheel loader" in name or "lader" in name:
+        return "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/CAT_950M_wheel_loader.jpg/640px-CAT_950M_wheel_loader.jpg"
+
     if "stihl" in name or "kettensäge" in name or "motorsäge" in name or "freischneider" in name:
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Chainsaw_Stihl_MS_170.jpg/640px-Chainsaw_Stihl_MS_170.jpg"
-    if "rasenmäher" in name or "rüttel" in name or t == "small_device":
+
+    if "rasenmäher" in name or "rüttel" in name or "platte" in name or t == "small_device":
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Plate_compactor.jpg/640px-Plate_compactor.jpg"
-    if "anhänger" in name or "demmler" in name or "unsinn" in name or "reisch" in name or t == "trailer":
+
+    if "anhänger" in name or "trailer" in name or t == "trailer":
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Car_trailer.jpg/640px-Car_trailer.jpg"
+
     if "ford" in name or "transit" in name or "vw" in name or "crafter" in name or t == "vehicle":
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Ford_Transit_Connect_%28III%29_IMG_8620.jpg/640px-Ford_Transit_Connect_%28III%29_IMG_8620.jpg"
-    if "radlader" in name or "zeppelin" in name:
-        return "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/CAT_950M_wheel_loader.jpg/640px-CAT_950M_wheel_loader.jpg"
+
     if "deutz" in name or "lamborghini" in name or "traktor" in name:
         return "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Deutz-Fahr_Agrotron_165.7.jpg/640px-Deutz-Fahr_Agrotron_165.7.jpg"
 
     return "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Liebherr_934_Hydraulic_Excavator.jpg/640px-Liebherr_934_Hydraulic_Excavator.jpg"
-
-
-def image_url(machine):
-    if machine.get("custom_image"):
-        return machine.get("custom_image")
-    return default_machine_image(machine)
 
 
 def final_status(machine):
@@ -389,16 +361,10 @@ def prepare_machines(machines):
     for m in machines:
         notes = sql_fetchall("SELECT * FROM notes WHERE machine_id = %s ORDER BY id DESC;", (m["id"],))
         m["notes"] = notes
-
-        if m.get("type") == "hours":
-            m["type"] = "machine"
-
-        color, rest = final_status(m)
-        m["final_color"] = color
-        m["rest"] = rest
+        m["final_color"], m["rest"] = final_status(m)
         m["unit"] = unit(m)
         m["type_name"] = type_name(m)
-        m["image_url"] = image_url(m)
+        m["image_url"] = default_machine_image(m)
 
     return sorted(machines, key=lambda x: (order[x["final_color"]], x["rest"]))
 
@@ -449,6 +415,16 @@ def inject_global_data():
 @app.route("/")
 def login_page():
     return render_template("login.html")
+
+
+@app.route("/impressum")
+def impressum():
+    return render_template("impressum.html")
+
+
+@app.route("/datenschutz")
+def datenschutz():
+    return render_template("datenschutz.html")
 
 
 @app.route("/denied")
@@ -575,7 +551,6 @@ def machines():
         if not has_perm("create_machines"):
             return no_permission("Du hast keine Berechtigung, Maschinen anzulegen.")
 
-        machine_id = str(time.time()).replace(".", "")
         uploaded = uploaded_image_to_data_url(request.files.get("machine_image_file"))
         custom_image = uploaded or request.form.get("machine_image_url", "")
 
@@ -587,7 +562,7 @@ def machines():
             )
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
         """, (
-            machine_id,
+            str(time.time()).replace(".", ""),
             current_fleet_id(),
             request.form["name"],
             request.form["type"],
@@ -629,18 +604,12 @@ def edit_machine(machine_id):
                 current_location=%s, independent=%s, attachments=%s, custom_image=%s
             WHERE id=%s;
         """, (
-            request.form["name"],
-            request.form["type"],
-            request.form.get("license_plate", ""),
-            request.form.get("tuv", ""),
-            float(request.form["current_value"]),
-            float(request.form["interval"]),
-            request.form["responsible"],
-            request.form["current_location"],
-            "independent" in request.form,
-            request.form["attachments"],
-            custom_image,
-            machine_id
+            request.form["name"], request.form["type"],
+            request.form.get("license_plate", ""), request.form.get("tuv", ""),
+            float(request.form["current_value"]), float(request.form["interval"]),
+            request.form["responsible"], request.form["current_location"],
+            "independent" in request.form, request.form["attachments"],
+            custom_image, machine_id
         ))
 
         log_action("Eintrag bearbeitet", f"{machine['name']} → {request.form['name']}")
@@ -660,21 +629,21 @@ def reports():
 
     if request.method == "POST":
         machine_id = request.form["machine_id"]
+        machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
 
         exact = request.form.get("new_value", "").strip()
-        approx = request.form.get("approx_value", "").strip()
+        today_used = request.form.get("today_used", "").strip()
 
-        if not exact and not approx:
-            return "Bitte exakten oder ungefähren Stand eintragen."
+        if not exact and not today_used:
+            return "Bitte aktuellen Stand oder heute gefahrene Stunden/Kilometer eintragen."
 
         if exact:
             new_value = float(exact)
             value_type = "exakt"
         else:
-            new_value = float(approx)
-            value_type = "ungefähr"
+            new_value = float(machine["current_value"]) + float(today_used)
+            value_type = f"heute gefahren: {today_used} {unit(machine)}"
 
-        machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
         old_value = machine["current_value"]
         old_location = machine["current_location"]
 
@@ -683,10 +652,7 @@ def reports():
         new_location_select = request.form.get("new_location_select", "")
         new_location_text = request.form.get("new_location_text", "").strip()
 
-        if location_change:
-            final_location = new_location_text if new_location_text else new_location_select
-        else:
-            final_location = selected_location
+        final_location = new_location_text if location_change and new_location_text else new_location_select if location_change else selected_location
 
         sql_execute("""
             UPDATE machines SET current_value=%s, current_location=%s, independent=%s
@@ -695,17 +661,18 @@ def reports():
 
         note = request.form["note"]
         priority = request.form["priority"]
+        note_photo = uploaded_image_to_data_url(request.files.get("note_photo_file"))
 
-        if note.strip():
+        if note.strip() or note_photo:
             sql_execute("""
                 INSERT INTO notes (
                     machine_id, text, priority, location, independent,
-                    created_by, created_at, value_type
+                    created_by, created_at, value_type, photo
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s);
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s);
             """, (
                 machine_id, note, priority, final_location,
-                "independent" in request.form, current_user(), now_dt(), value_type
+                "independent" in request.form, current_user(), now_dt(), value_type, note_photo
             ))
 
         sql_execute("""
@@ -723,7 +690,7 @@ def reports():
 
         log_action(
             "Tagesbericht",
-            f"{machine['name']} | Stand: {old_value} → {new_value} ({value_type}) | Standort: {old_location} → {final_location}"
+            f"{machine['name']} | {old_value} → {new_value} ({value_type}) | Standort: {old_location} → {final_location}"
         )
 
     machines_list = get_machines()
@@ -742,13 +709,7 @@ def service():
         return no_permission("Du hast keine Berechtigung, Servicearbeiten durchzuführen.")
 
     machines_data = get_machines()
-    sort_by = request.args.get("sort_by", "status")
-    filter_value = request.args.get("filter", "").strip().lower()
-
-    if filter_value:
-        machines_data = [m for m in machines_data if filter_value in str(m.get(sort_by, "")).lower()]
-
-    return render_template("service.html", machines=machines_data, sort_by=sort_by, filter_value=filter_value)
+    return render_template("service.html", machines=machines_data, sort_by="status", filter_value="")
 
 
 @app.route("/service-check/<machine_id>")
@@ -759,13 +720,9 @@ def service_check(machine_id):
         return no_permission("Du hast keine Berechtigung, Servicearbeiten durchzuführen.")
 
     machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
-    if not machine:
-        return "Eintrag nicht gefunden"
-
     machine = prepare_machines([machine])[0]
-    checklist = CHECKLISTS.get(machine.get("type", "machine"), CHECKLISTS["machine"])
 
-    return render_template("service_check.html", machine=machine, checklist=checklist)
+    return render_template("service_check.html", machine=machine, checklist=[])
 
 
 @app.route("/service-done/<machine_id>", methods=["POST"])
@@ -780,37 +737,13 @@ def service_done(machine_id):
     increase = float(settings.get(machine["type"], 500))
 
     sql_execute("UPDATE machines SET interval = interval + %s WHERE id = %s;", (increase, machine_id))
-
-    resolved_indexes = [int(i) for i in request.form.getlist("resolved_notes")]
-    notes = sql_fetchall("SELECT * FROM notes WHERE machine_id = %s ORDER BY id DESC;", (machine_id,))
-
-    for index in resolved_indexes:
-        if index < len(notes):
-            sql_execute("DELETE FROM notes WHERE id = %s;", (notes[index]["id"],))
-
-    new_note = request.form.get("new_note", "").strip()
-    if new_note:
-        sql_execute("""
-            INSERT INTO notes (machine_id, text, priority, location, independent, created_by, created_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s);
-        """, (
-            machine_id,
-            new_note,
-            request.form.get("new_note_priority", "green"),
-            machine.get("current_location", ""),
-            machine.get("independent", False),
-            current_user(),
-            now_dt()
-        ))
-
     log_action("Service erledigt", f"{machine['name']} | Intervall erhöht um {increase}")
+
     return redirect("/service")
 
 
 @app.route("/admin")
 def admin():
-    if not is_admin():
-        return redirect("/dashboard")
     return redirect("/admin/fleets")
 
 
@@ -820,54 +753,27 @@ def admin_fleets():
         return redirect("/dashboard")
 
     if request.method == "POST":
-        action = request.form.get("action")
-
         uploaded = uploaded_image_to_data_url(request.files.get("profile_image_file"))
         profile_image = uploaded or request.form.get("profile_image", "")
+        action = request.form.get("action")
 
         if action == "create_fleet":
-            fleet_id = "fleet_" + str(time.time()).replace(".", "")
             sql_execute("""
                 INSERT INTO fleets (id, name, password_hash, profile_image)
                 VALUES (%s,%s,%s,%s);
-            """, (
-                fleet_id,
-                request.form["fleet_name"],
-                hash_password(request.form["fleet_password"]),
-                profile_image
-            ))
+            """, ("fleet_" + str(time.time()).replace(".", ""), request.form["fleet_name"], hash_password(request.form["fleet_password"]), profile_image))
 
         elif action == "update_fleet":
             fleet_id = request.form["fleet_id"]
 
             if request.form.get("fleet_password"):
                 sql_execute("""
-                    UPDATE fleets SET name=%s, password_hash=%s, profile_image=%s
-                    WHERE id=%s;
-                """, (
-                    request.form["fleet_name"],
-                    hash_password(request.form["fleet_password"]),
-                    profile_image,
-                    fleet_id
-                ))
+                    UPDATE fleets SET name=%s, password_hash=%s, profile_image=%s WHERE id=%s;
+                """, (request.form["fleet_name"], hash_password(request.form["fleet_password"]), profile_image, fleet_id))
             else:
-                if profile_image:
-                    sql_execute("""
-                        UPDATE fleets SET name=%s, profile_image=%s
-                        WHERE id=%s;
-                    """, (
-                        request.form["fleet_name"],
-                        profile_image,
-                        fleet_id
-                    ))
-                else:
-                    sql_execute("""
-                        UPDATE fleets SET name=%s
-                        WHERE id=%s;
-                    """, (
-                        request.form["fleet_name"],
-                        fleet_id
-                    ))
+                sql_execute("""
+                    UPDATE fleets SET name=%s, profile_image=COALESCE(NULLIF(%s,''), profile_image) WHERE id=%s;
+                """, (request.form["fleet_name"], profile_image, fleet_id))
 
         return redirect("/admin/fleets")
 
@@ -903,38 +809,13 @@ def migrate_json_to_fleet():
             )
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
         """, (
-            machine_id,
-            fleet_id,
-            old.get("name", "Unbenannt"),
-            old.get("type", "machine"),
-            old.get("license_plate", ""),
-            old.get("tuv", ""),
-            float(old.get("current_value", 0)),
-            float(old.get("interval", 500)),
-            old.get("responsible", ""),
-            old.get("current_location", ""),
-            old.get("independent", False),
-            old.get("attachments", ""),
+            machine_id, fleet_id, old.get("name", "Unbenannt"), old.get("type", "machine"),
+            old.get("license_plate", ""), old.get("tuv", ""),
+            float(old.get("current_value", 0)), float(old.get("interval", 500)),
+            old.get("responsible", ""), old.get("current_location", ""),
+            old.get("independent", False), old.get("attachments", ""),
             old.get("custom_image", "")
         ))
-
-        for note in old.get("notes", []):
-            sql_execute("""
-                INSERT INTO notes (
-                    machine_id, text, priority, location, independent,
-                    created_by, created_at, value_type
-                )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s);
-            """, (
-                machine_id,
-                note.get("text", ""),
-                note.get("priority", "green"),
-                note.get("location", ""),
-                note.get("independent", False),
-                note.get("created_by", "Altbestand"),
-                now_dt(),
-                note.get("value_type", "")
-            ))
 
         imported += 1
 
@@ -947,17 +828,12 @@ def admin_users():
         return redirect("/dashboard")
 
     if request.method == "POST":
-        action = request.form.get("action")
         username = request.form.get("username")
 
-        if action == "update_user":
+        if request.form.get("action") == "update_user":
             sql_execute("""
-                UPDATE users SET
-                    role=%s,
-                    custom_role=%s,
-                    perm_create_machines=%s,
-                    perm_send_reports=%s,
-                    perm_do_service=%s
+                UPDATE users SET role=%s, custom_role=%s,
+                perm_create_machines=%s, perm_send_reports=%s, perm_do_service=%s
                 WHERE username=%s;
             """, (
                 request.form.get("role", "Baustelle"),
@@ -968,7 +844,7 @@ def admin_users():
                 username
             ))
 
-        elif action == "force_logout":
+        elif request.form.get("action") == "force_logout":
             sql_execute("UPDATE users SET force_token=%s WHERE username=%s;", (secrets.token_hex(16), username))
 
         return redirect("/admin/users")

@@ -24,8 +24,8 @@
         <label>Bild aus Galerie hochladen</label>
         <input name="machine_image_file" type="file" accept="image/*">
 
-        <label>oder Bild-URL aus dem Internet</label>
-        <input name="machine_image_url" placeholder="https://..." value="{{ edit_machine.custom_image if edit_machine else '' }}">
+        <label>oder direkte Bild-URL aus dem Internet</label>
+        <input name="machine_image_url" placeholder="https://.../bild.jpg" value="{{ edit_machine.custom_image if edit_machine else '' }}">
 
         <label>Art</label>
         <select name="type" id="typeSelect" onchange="updateTypeFields()" required>
@@ -43,17 +43,17 @@
             <input name="tuv" value="{{ edit_machine.tuv if edit_machine else '' }}" placeholder="z. B. 05/2027">
         </div>
 
-        <label>Aktueller Stand</label>
-        <input name="current_value" type="number" step="0.1" value="{{ edit_machine.current_value if edit_machine else '' }}" placeholder="Betriebsstunden oder Kilometer" required>
+        <label>Betriebsstundenstand / Kilometerstand</label>
+        <input name="current_value" type="number" step="0.1" value="{{ edit_machine.current_value if edit_machine else '' }}" required>
 
         <label>Service-Intervall</label>
-        <input name="interval" id="intervalInput" type="number" step="0.1" value="{{ edit_machine.interval if edit_machine else '' }}" placeholder="z. B. 500 oder 15000" required>
+        <input name="interval" id="intervalInput" type="number" step="0.1" value="{{ edit_machine.interval if edit_machine else '' }}" required>
 
         <label>Fahrzeug-Verantwortlicher</label>
-        <input name="responsible" value="{{ edit_machine.responsible if edit_machine else '' }}" placeholder="z. B. Max" required>
+        <input name="responsible" value="{{ edit_machine.responsible if edit_machine else '' }}" required>
 
         <label>Aktueller Standort</label>
-        <input name="current_location" value="{{ edit_machine.current_location if edit_machine else '' }}" placeholder="z. B. Halle 1, Baustelle Süd" required>
+        <input name="current_location" value="{{ edit_machine.current_location if edit_machine else '' }}" required>
 
         <div class="checkbox-row">
             <input type="checkbox" name="independent" {% if edit_machine and edit_machine.independent %}checked{% endif %}>
@@ -61,14 +61,7 @@
         </div>
 
         <label>Anbaugeräte / Zubehör</label>
-        <textarea name="attachments" placeholder="z. B. Greifer, Schaufel, Palettengabel">{{ edit_machine.attachments if edit_machine else '' }}</textarea>
-
-        {% if edit_machine and edit_machine.custom_image %}
-            <div class="card" style="margin-top:18px;">
-                <h3>Aktuelles Bild</h3>
-                <img src="{{ edit_machine.custom_image }}" style="width:100%; max-height:220px; object-fit:cover; border-radius:18px;">
-            </div>
-        {% endif %}
+        <textarea name="attachments">{{ edit_machine.attachments if edit_machine else '' }}</textarea>
 
         <button class="btn">
             {% if edit_machine %}
@@ -77,7 +70,6 @@
                 Eintrag anlegen
             {% endif %}
         </button>
-
     </form>
 </div>
 
@@ -87,24 +79,29 @@
     {% for m in machines %}
     <div class="machine-card">
 
-        <img src="{{ m.image_url }}" alt="{{ m.name }}">
+        <img src="{{ m.image_url }}" alt="{{ m.name }}" onerror="this.src='/static/img/servicepilot_logo.png'">
 
         <div class="machine-card-body">
-            <div class="machine-status-line">
-                {% if m.final_color == "red" %}
-                    <span class="status-red">🔴 Dringend</span>
-                {% elif m.final_color == "yellow" %}
-                    <span class="status-yellow">🟡 Achtung</span>
-                {% else %}
-                    <span class="status-green">🟢 OK</span>
-                {% endif %}
-            </div>
+            {% if m.final_color == "red" %}
+                <span class="status-red">🔴 Dringend</span>
+            {% elif m.final_color == "yellow" %}
+                <span class="status-yellow">🟡 Achtung</span>
+            {% else %}
+                <span class="status-green">🟢 OK</span>
+            {% endif %}
 
             <h3>{{ m.name }}</h3>
 
             <p><strong>Art:</strong> {{ m.type_name }}</p>
-            <p><strong>Stand:</strong> {{ m.current_value }} {{ m.unit }}</p>
-            <p><strong>Rest bis Service:</strong> {{ m.rest }} {{ m.unit }}</p>
+
+            {% if m.type == "vehicle" %}
+                <p><strong>Kilometerstand:</strong> {{ m.current_value }} km</p>
+                <p><strong>Rest bis Service:</strong> {{ m.rest }} km</p>
+            {% else %}
+                <p><strong>Betriebsstundenstand:</strong> {{ m.current_value }} h</p>
+                <p><strong>Rest bis Service:</strong> {{ m.rest }} h</p>
+            {% endif %}
+
             <p><strong>Verantwortlicher:</strong> {{ m.responsible }}</p>
 
             <p>
@@ -133,14 +130,13 @@
                     <strong>Notizen:</strong>
                     {% for n in m.notes %}
                         <div class="mini-note">
-                            {% if n.priority == "red" %}
-                                🔴
-                            {% elif n.priority == "yellow" %}
-                                🟡
-                            {% else %}
-                                🟢
-                            {% endif %}
+                            {% if n.priority == "red" %}🔴{% elif n.priority == "yellow" %}🟡{% else %}🟢{% endif %}
                             {{ n.text }}
+
+                            {% if n.photo %}
+                                <br>
+                                <img src="{{ n.photo }}" style="width:100%; max-height:120px; object-fit:cover; border-radius:12px; margin-top:8px;">
+                            {% endif %}
                         </div>
                     {% endfor %}
                 </div>
