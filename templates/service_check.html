@@ -4,106 +4,103 @@
 
 <div class="header">
     <div>
-        <h1>Service-Checkliste</h1>
-        <p>{{ machine.name }} prüfen und Service abschließen.</p>
+        <h1>Service durchführen</h1>
+        <p>{{ machine.name }} prüfen, Mängel beheben und Wartung abschließen.</p>
     </div>
 </div>
 
 <div class="card">
-    <h2>Fahrzeugdaten</h2>
+    <h2>{{ machine.name }}</h2>
 
-    <p><strong>Kategorie:</strong> {{ machine.type_name }}</p>
-    <p><strong>Aktueller Stand:</strong> {{ machine.current_value }} {{ machine.unit }}</p>
-    <p><strong>Rest bis Service:</strong> {{ machine.rest }} {{ machine.unit }}</p>
+    {% if machine.image_url %}
+        <img src="{{ machine.image_url }}" class="service-main-img">
+    {% else %}
+        <div class="machine-placeholder">
+            {% if machine.type == "vehicle" %}🚛{% elif machine.type == "trailer" %}⚙️{% elif machine.type == "small_device" %}🪚{% else %}🚜{% endif %}
+        </div>
+    {% endif %}
+
+    <p><strong>Art:</strong> {{ machine.type_name }}</p>
+
+    {% if machine.type == "vehicle" %}
+        <p><strong>Kilometerstand:</strong> {{ machine.current_value }} km</p>
+    {% else %}
+        <p><strong>Betriebsstundenstand:</strong> {{ machine.current_value }} h</p>
+    {% endif %}
+
+    <p><strong>Aktueller Standort:</strong> {{ machine.current_location }}</p>
     <p><strong>Verantwortlicher:</strong> {{ machine.responsible }}</p>
-
-    <p>
-        <strong>Standort:</strong>
-        {% if machine.independent %}
-            ortsunabhängig
-        {% else %}
-            {{ machine.current_location }}
-        {% endif %}
-    </p>
 </div>
 
 <br>
 
-<form action="/service-done/{{ machine.id }}" method="post">
+<form method="post" enctype="multipart/form-data" action="/service-done/{{ machine.id }}">
+
+    <div class="card">
+        <h2>Wartungscheckliste</h2>
+
+        {% for item in checklist %}
+        <div class="checkbox-row">
+            <input type="checkbox" name="checklist" value="{{ item }}">
+            <label>{{ item }}</label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <br>
 
     <div class="card">
         <h2>Offene Notizen / Mängel</h2>
 
         {% if machine.notes %}
-
             {% for n in machine.notes %}
+            <div class="mini-note">
+                {% if n.priority == "red" %}
+                    🔴
+                {% elif n.priority == "yellow" %}
+                    🟡
+                {% else %}
+                    🟢
+                {% endif %}
 
-                <div class="note-box">
+                <strong>{{ n.text }}</strong>
 
-                    {% if n.priority == "red" %}
-                        <strong class="status-red">🔴 Dringend</strong>
-                    {% elif n.priority == "yellow" %}
-                        <strong class="status-yellow">🟡 Achtung</strong>
-                    {% else %}
-                        <strong class="status-green">🟢 Hinweis</strong>
-                    {% endif %}
+                {% if n.photo %}
+                    <br>
+                    <img src="{{ n.photo }}" class="note-photo">
+                {% endif %}
 
-                    <p>{{ n.text }}</p>
-                    <small>Standort: {{ n.location }}</small>
-
-                    <br><br>
-
-                    <div class="checkbox-row">
-                        <input type="checkbox" name="resolved_notes" value="{{ loop.index0 }}">
-                        <label>behoben</label>
-                    </div>
-
+                <div class="checkbox-row">
+                    <input type="checkbox" name="resolved_note_ids" value="{{ n.id }}">
+                    <label>behoben</label>
                 </div>
-
+            </div>
             {% endfor %}
-
         {% else %}
-
             <p>Keine offenen Notizen vorhanden.</p>
-
         {% endif %}
     </div>
 
     <br>
 
     <div class="card">
-        <h2>Wartungscheckliste</h2>
+        <h2>Neue Notiz nach Service</h2>
 
-        <div class="checklist-grid">
+        <label>Neue Notiz</label>
+        <textarea name="new_note" placeholder="z. B. Ölverlust weiterhin beobachten"></textarea>
 
-            {% for item in checklist %}
-
-                <div class="check-item">
-                    <input type="checkbox" name="checklist" value="{{ item }}">
-                    <label>{{ item }}</label>
-                </div>
-
-            {% endfor %}
-
-        </div>
-    </div>
-
-    <br>
-
-    <div class="card">
-        <h2>Neue Notiz eintragen</h2>
-
-        <textarea name="new_note" placeholder="Optional neue Notiz eintragen"></textarea>
+        <label>Foto zur neuen Notiz</label>
+        <input name="new_note_photo_file" type="file" accept="image/*">
 
         <label>Priorität</label>
         <select name="new_note_priority">
-            <option value="green">🟢 Grün – Hinweis</option>
-            <option value="yellow">🟡 Gelb – Achtung</option>
-            <option value="red">🔴 Rot – dringend</option>
+            <option value="green">🟢 Grün</option>
+            <option value="yellow">🟡 Gelb</option>
+            <option value="red">🔴 Rot</option>
         </select>
-
-        <button class="btn">Service endgültig abschließen</button>
     </div>
+
+    <button class="btn">Service endgültig abschließen</button>
 
 </form>
 

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="header">
+    <div>
+        <h1>Admin-Gesamtdashboard</h1>
+        <p>Alle Fuhrparke im Überblick.</p>
+    </div>
+</div>
+
+<div class="card-grid">
+    {% for item in overview %}
+    <div class="card">
+
+        <h2>{{ item.fleet.name }}</h2>
+
+        {% if item.fleet.profile_image %}
+            <img src="{{ item.fleet.profile_image }}" class="fleet-overview-img">
+        {% endif %}
+
+        <div class="mini-pie"
+             style="background:conic-gradient(
+                #ff6b6b 0deg {{ item.red_deg }}deg,
+                #ffd166 {{ item.red_deg }}deg {{ item.yellow_deg }}deg,
+                #6ee7a8 {{ item.yellow_deg }}deg 360deg
+             );">
+        </div>
+
+        <p><strong>Gesamt:</strong> {{ item.total }}</p>
+        <p><span class="status-red">Rot:</span> {{ item.red }}</p>
+        <p><span class="status-yellow">Gelb:</span> {{ item.yellow }}</p>
+        <p><span class="status-green">Grün:</span> {{ item.green }}</p>
+
+        <br>
+
+        {% for m in item.machines %}
+            <div class="mini-note">
+                {% if m.final_color == "red" %}
+                    🔴
+                {% elif m.final_color == "yellow" %}
+                    🟡
+                {% else %}
+                    🟢
+                {% endif %}
+
+                <strong>{{ m.name }}</strong><br>
+
+                {% if m.type == "vehicle" %}
+                    Kilometerstand: {{ m.current_value }} km<br>
+                    Rest bis Service: {{ m.rest }} km
+                {% else %}
+                    Betriebsstundenstand: {{ m.current_value }} h<br>
+                    Rest bis Service: {{ m.rest }} h
+                {% endif %}
+            </div>
+        {% endfor %}
+
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

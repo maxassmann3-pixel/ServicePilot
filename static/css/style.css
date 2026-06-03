@@ -542,3 +542,34 @@ body::after{
         width:130px;
     }
 }
+.mini-pie{
+    width:110px;
+    height:110px;
+    border-radius:50%;
+    margin:16px auto;
+    box-shadow:0 10px 25px rgba(0,0,0,0.28);
+}
+
+.service-main-img{
+    width:100%;
+    max-height:260px;
+    object-fit:cover;
+    border-radius:20px;
+    margin-bottom:16px;
+}
+
+.fleet-overview-img{
+    width:100%;
+    max-height:170px;
+    object-fit:cover;
+    border-radius:18px;
+    margin-bottom:14px;
+}
+
+.note-photo{
+    width:100%;
+    max-height:180px;
+    object-fit:cover;
+    border-radius:14px;
+    margin-top:10px;
+}
