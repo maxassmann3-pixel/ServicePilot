@@ -25,22 +25,25 @@
     <aside class="sidebar">
         <img class="sidebar-logo" src="/static/img/servicepilot_logo.png">
 
+        {% if not session.get("admin") %}
         <div class="fleet-title">
             {{ fleet_name if fleet_name else "Fuhrpark" }}
         </div>
+        {% endif %}
 
         <nav class="menu">
-            <a class="{% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">🏠 Dashboard</a>
-            <a class="{% if request.path == '/machines' %}active{% endif %}" href="/machines">🚜 Maschinen</a>
-            <a class="{% if request.path == '/reports' %}active{% endif %}" href="/reports">🕒 Tagesbericht (Mitarbeiter)</a>
-            <a class="{% if request.path == '/service' %}active{% endif %}" href="/service">🛠 Servicecenter (Werkstatt)</a>
 
             {% if session.get("admin") %}
-                <a class="{% if request.path == '/admin/overview' %}active{% endif %}" href="/admin/overview">📊 Gesamtübersicht</a>
+                <a class="{% if request.path == '/admin/overview' %}active{% endif %}" href="/admin/overview">📊 Dashboard</a>
                 <a class="{% if request.path == '/admin/fleets' %}active{% endif %}" href="/admin/fleets">🏢 Fuhrparkverwaltung</a>
                 <a class="{% if request.path == '/admin/users' %}active{% endif %}" href="/admin/users">👥 Nutzerverwaltung</a>
                 <a class="{% if request.path == '/admin/activity' %}active{% endif %}" href="/admin/activity">📋 Aktivitäten</a>
                 <a class="{% if request.path == '/settings' %}active{% endif %}" href="/settings">⚙️ Einstellungen</a>
+            {% else %}
+                <a class="{% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">🏠 Dashboard</a>
+                <a class="{% if request.path == '/machines' %}active{% endif %}" href="/machines">🚜 Maschinen</a>
+                <a class="{% if request.path == '/reports' %}active{% endif %}" href="/reports">🕒 Tagesbericht (Mitarbeiter)</a>
+                <a class="{% if request.path == '/service' %}active{% endif %}" href="/service">🛠 Servicecenter (Werkstatt)</a>
             {% endif %}
 
             <a href="/impressum">ℹ️ Impressum</a>

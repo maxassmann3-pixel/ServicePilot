@@ -4,14 +4,14 @@
 
 <div class="header">
     <div>
-        <h1>Admin-Gesamtdashboard</h1>
-        <p>Alle Fuhrparke im Überblick.</p>
+        <h1>Dashboard</h1>
+        <p>Gesamtübersicht über alle Fuhrparke.</p>
     </div>
 </div>
 
 <div class="card-grid">
     {% for item in overview %}
-    <div class="card">
+    <div class="card admin-fleet-card">
 
         <h2>{{ item.fleet.name }}</h2>
 
@@ -19,41 +19,74 @@
             <img src="{{ item.fleet.profile_image }}" class="fleet-overview-img">
         {% endif %}
 
-        <div class="mini-pie"
+        <div class="donut-chart"
              style="background:conic-gradient(
                 #ff6b6b 0deg {{ item.red_deg }}deg,
                 #ffd166 {{ item.red_deg }}deg {{ item.yellow_deg }}deg,
                 #6ee7a8 {{ item.yellow_deg }}deg 360deg
              );">
+            <div class="donut-hole">
+                {{ item.total }}
+            </div>
         </div>
 
-        <p><strong>Gesamt:</strong> {{ item.total }}</p>
-        <p><span class="status-red">Rot:</span> {{ item.red }}</p>
-        <p><span class="status-yellow">Gelb:</span> {{ item.yellow }}</p>
-        <p><span class="status-green">Grün:</span> {{ item.green }}</p>
+        <div class="dashboard-stats">
+            <span class="status-red">Rot: {{ item.red }}</span>
+            <span class="status-yellow">Gelb: {{ item.yellow }}</span>
+            <span class="status-green">Grün: {{ item.green }}</span>
+        </div>
 
         <br>
 
         {% for m in item.machines %}
-            <div class="mini-note">
-                {% if m.final_color == "red" %}
-                    🔴
-                {% elif m.final_color == "yellow" %}
-                    🟡
-                {% else %}
-                    🟢
-                {% endif %}
+        <div class="admin-machine-row">
 
-                <strong>{{ m.name }}</strong><br>
-
-                {% if m.type == "vehicle" %}
-                    Kilometerstand: {{ m.current_value }} km<br>
-                    Rest bis Service: {{ m.rest }} km
+            <div class="admin-machine-left">
+                {% if m.image_url %}
+                    <img src="{{ m.image_url }}" class="admin-machine-img">
                 {% else %}
-                    Betriebsstundenstand: {{ m.current_value }} h<br>
-                    Rest bis Service: {{ m.rest }} h
+                    <div class="admin-machine-placeholder">
+                        {% if m.type == "vehicle" %}
+                            🚛
+                        {% elif m.type == "trailer" %}
+                            ⚙️
+                        {% elif m.type == "small_device" %}
+                            🪚
+                        {% else %}
+                            🚜
+                        {% endif %}
+                    </div>
                 {% endif %}
             </div>
+
+            <div class="admin-machine-info">
+                {% if m.final_color == "red" %}
+                    <span class="status-red">🔴 Dringend</span>
+                {% elif m.final_color == "yellow" %}
+                    <span class="status-yellow">🟡 Achtung</span>
+                {% else %}
+                    <span class="status-green">🟢 OK</span>
+                {% endif %}
+
+                <h3>{{ m.name }}</h3>
+
+                {% if m.type == "vehicle" %}
+                    <p>Kilometerstand: {{ m.current_value }} km</p>
+                    <p>Rest bis Service: {{ m.rest }} km</p>
+                {% else %}
+                    <p>Betriebsstundenstand: {{ m.current_value }} h</p>
+                    <p>Rest bis Service: {{ m.rest }} h</p>
+                {% endif %}
+
+                <p>Standort: {{ m.current_location }}</p>
+            </div>
+
+            <form method="post" action="/admin/delete-machine/{{ m.id }}" class="admin-delete-form">
+                <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort" required>
+                <button class="btn btn-red btn-small">Löschen</button>
+            </form>
+
+        </div>
         {% endfor %}
 
     </div>

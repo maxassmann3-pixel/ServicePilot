@@ -934,6 +934,20 @@ def admin():
 
     return redirect("/admin/overview")
 
+@app.route("/admin/delete-machine/<machine_id>", methods=["POST"])
+def admin_delete_machine(machine_id):
+    if not is_admin():
+        return redirect("/dashboard")
+
+    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
+        return redirect("/denied")
+
+    sql_execute("DELETE FROM notes WHERE machine_id = %s;", (machine_id,))
+    sql_execute("DELETE FROM histories WHERE machine_id = %s;", (machine_id,))
+    sql_execute("DELETE FROM machines WHERE id = %s;", (machine_id,))
+
+    return redirect("/admin/overview")
+
 
 @app.route("/admin/overview")
 def admin_overview():
