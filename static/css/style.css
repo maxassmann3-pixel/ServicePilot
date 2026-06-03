@@ -11,13 +11,11 @@ body{
     min-height:100vh;
     font-family:Arial, Helvetica, sans-serif;
     background:
-        radial-gradient(circle at top right, rgba(255,193,7,0.14), transparent 32%),
-        radial-gradient(circle at bottom left, rgba(80,120,160,0.18), transparent 35%),
+        radial-gradient(circle at top right, rgba(93,184,255,0.16), transparent 32%),
+        radial-gradient(circle at bottom left, rgba(80,120,160,0.20), transparent 35%),
         #202225;
     color:#f2f4f8;
 }
-
-/* Grundlayout */
 
 .app-container{
     display:flex;
@@ -70,13 +68,13 @@ body{
 }
 
 .menu a:hover{
-    background:rgba(255,193,7,0.16);
+    background:rgba(93,184,255,0.16);
     transform:translateX(3px);
 }
 
 .menu a.active{
-    background:linear-gradient(135deg, #f6c343, #d99b13);
-    color:#161616;
+    background:linear-gradient(135deg,#5db8ff,#2f8cff);
+    color:#fff;
     font-weight:700;
 }
 
@@ -86,8 +84,6 @@ body{
     padding:34px;
     max-width:1450px;
 }
-
-/* Header */
 
 .header{
     display:flex;
@@ -107,8 +103,6 @@ body{
     margin:8px 0 0 0;
     color:#b8c0cc;
 }
-
-/* Karten */
 
 .card,
 .machine-card,
@@ -136,8 +130,6 @@ body{
     gap:24px;
 }
 
-/* Machine Cards */
-
 .machine-card{
     overflow:hidden;
     display:flex;
@@ -159,7 +151,7 @@ body{
     align-items:center;
     justify-content:center;
     font-size:90px;
-    background:linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025));
+    background:linear-gradient(135deg, rgba(93,184,255,0.10), rgba(255,255,255,0.025));
     border-radius:24px 24px 0 0;
     user-select:none;
 }
@@ -182,8 +174,6 @@ body{
     color:#d7dce5;
     line-height:1.4;
 }
-
-/* Formulare */
 
 form{
     width:100%;
@@ -213,8 +203,8 @@ textarea{
 input:focus,
 select:focus,
 textarea:focus{
-    border-color:#f6c343;
-    box-shadow:0 0 0 3px rgba(246,195,67,0.18);
+    border-color:#5db8ff;
+    box-shadow:0 0 0 3px rgba(93,184,255,0.18);
 }
 
 textarea{
@@ -242,16 +232,14 @@ input[type="file"]{
     margin:0;
 }
 
-/* Buttons */
-
 .btn{
     display:inline-block;
     border:none;
     border-radius:14px;
     padding:13px 18px;
     margin-top:18px;
-    background:linear-gradient(135deg, #f6c343, #d99b13);
-    color:#161616;
+    background:linear-gradient(135deg,#5db8ff,#2f8cff);
+    color:white;
     font-weight:800;
     cursor:pointer;
     transition:0.2s ease;
@@ -259,7 +247,7 @@ input[type="file"]{
 
 .btn:hover{
     transform:translateY(-2px);
-    box-shadow:0 10px 25px rgba(246,195,67,0.22);
+    box-shadow:0 10px 25px rgba(93,184,255,0.30);
 }
 
 .btn-small{
@@ -276,8 +264,6 @@ input[type="file"]{
     box-shadow:0 10px 25px rgba(255,96,96,0.22);
 }
 
-/* Status */
-
 .status-red{
     color:#ff6b6b;
     font-weight:800;
@@ -292,8 +278,6 @@ input[type="file"]{
     color:#6ee7a8;
     font-weight:800;
 }
-
-/* Tabellen */
 
 .table-box{
     overflow:auto;
@@ -315,15 +299,13 @@ td{
 }
 
 th{
-    color:#f6c343;
+    color:#5db8ff;
     background:rgba(255,255,255,0.04);
 }
 
 td{
     color:#e8edf5;
 }
-
-/* Notizen */
 
 .mini-note-list{
     margin-top:14px;
@@ -346,14 +328,12 @@ td{
     margin-top:8px;
 }
 
-/* Admin Logs */
-
 .admin-log-card{
     padding:16px;
     border-radius:16px;
     background:rgba(255,255,255,0.055);
     margin-bottom:12px;
-    border-left:4px solid #f6c343;
+    border-left:4px solid #5db8ff;
 }
 
 .admin-detail{
@@ -372,8 +352,6 @@ td{
 .filter-box input{
     max-width:320px;
 }
-
-/* Login */
 
 .login-wrapper{
     min-height:100vh;
@@ -418,8 +396,6 @@ td{
     margin-bottom:24px;
 }
 
-/* Splash */
-
 #splash{
     position:fixed;
     inset:0;
@@ -452,8 +428,6 @@ td{
     opacity:0.65;
 }
 
-/* Footer */
-
 .copyright{
     text-align:center;
     color:#b8c0cc;
@@ -471,8 +445,6 @@ td{
 .copyright a:hover{
     text-decoration:underline;
 }
-
-/* Hintergrund-Akzente ohne lokale Maschinenbilder */
 
 body::before{
     content:"🚜";
@@ -495,8 +467,6 @@ body::after{
     pointer-events:none;
     z-index:-1;
 }
-
-/* Mobile */
 
 @media (max-width:900px){
     .app-container{
