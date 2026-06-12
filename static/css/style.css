@@ -878,3 +878,59 @@ body::after{
         width:130px;
     }
 }
+.card-actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:8px;
+}
+
+.pdf-chip{
+    display:inline-block;
+    padding:8px 12px;
+    border-radius:999px;
+    background:rgba(93,184,255,0.14);
+    color:#5db8ff;
+    text-decoration:none;
+    font-weight:800;
+    font-size:13px;
+}
+
+.pdf-chip:hover{
+    background:rgba(93,184,255,0.24);
+}
+
+.admin-overview-grid{
+    align-items:start;
+}
+
+.admin-fleet-card{
+    height:auto !important;
+    min-height:unset !important;
+}
+
+.sidebar-copy{
+    margin-top:10px;
+    text-align:center;
+    font-size:11px;
+    color:#b8c0cc;
+    line-height:1.4;
+}
+
+body.light-mode .sidebar-copy{
+    color:#475467;
+}
+
+.top-theme-switch{
+    position:absolute;
+    top:18px;
+    right:28px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    z-index:20;
+}
+
+.main{
+    position:relative;
+    padding-top:52px;
+}

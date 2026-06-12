@@ -9,24 +9,24 @@
     </div>
 
     {% if current_fleet_id %}
-    <a href="/fleet-pdf/{{ current_fleet_id }}">
+    <a href="/fleet-pdf/{{ current_fleet_id }}" target="_blank">
         <button class="btn">Fuhrpark als PDF speichern</button>
     </a>
     {% endif %}
 </div>
 
 <div class="card-grid">
-    <div class="card">
+    <div class="card dashboard-card">
         <h2>🔴 Dringend</h2>
         <h1 class="status-red">{{ red }}</h1>
     </div>
 
-    <div class="card">
+    <div class="card dashboard-card">
         <h2>🟡 Achtung</h2>
         <h1 class="status-yellow">{{ yellow }}</h1>
     </div>
 
-    <div class="card">
+    <div class="card dashboard-card">
         <h2>🟢 OK</h2>
         <h1 class="status-green">{{ green }}</h1>
     </div>
@@ -42,11 +42,24 @@
             <img src="{{ m.image_url }}" alt="{{ m.name }}">
         {% else %}
             <div class="machine-placeholder">
-                {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
+                {% if m.type == "vehicle" %}
+                    🚛
+                {% elif m.type == "trailer" %}
+                    ⚙️
+                {% elif m.type == "small_device" %}
+                    🪚
+                {% else %}
+                    🚜
+                {% endif %}
             </div>
         {% endif %}
 
         <div class="machine-card-body">
+
+            <div class="card-actions">
+                <a class="pdf-chip" href="/service-pdf/{{ m.id }}" target="_blank">⋮ PDF</a>
+            </div>
+
             {% if m.final_color == "red" %}
                 <span class="status-red">🔴 Dringend</span>
             {% elif m.final_color == "yellow" %}
@@ -65,12 +78,40 @@
                 <p><strong>Rest bis Service:</strong> {{ m.rest }} h</p>
             {% endif %}
 
-            <p><strong>Standort:</strong> {% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}</p>
+            <p>
+                <strong>Standort:</strong>
+                {% if m.independent %}
+                    ortsunabhängig
+                {% else %}
+                    {{ m.current_location }}
+                {% endif %}
+            </p>
+
             <p><strong>Verantwortlicher:</strong> {{ m.responsible }}</p>
 
-            <a href="/service-pdf/{{ m.id }}">
-                <button class="btn btn-small">Servicekarte PDF</button>
-            </a>
+            {% if m.notes %}
+            <div class="mini-note-list">
+                <strong>Notizen / Mängel:</strong>
+                {% for n in m.notes %}
+                <div class="mini-note">
+                    {% if n.priority == "red" %}
+                        🔴
+                    {% elif n.priority == "yellow" %}
+                        🟡
+                    {% else %}
+                        🟢
+                    {% endif %}
+                    {{ n.text }}
+
+                    {% if n.photo %}
+                    <br>
+                    <img src="{{ n.photo }}" class="note-photo">
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
         </div>
     </div>
     {% endfor %}

@@ -36,16 +36,6 @@
         </div>
         {% endif %}
 
-        <form method="post" action="/toggle-theme" class="theme-form">
-            <label class="switch">
-                <input type="checkbox" onchange="this.form.submit()" {% if theme == 'light' %}checked{% endif %}>
-                <span class="slider"></span>
-            </label>
-            <span class="theme-label">
-                {% if theme == "light" %}Hellmodus{% else %}Dunkelmodus{% endif %}
-            </span>
-        </form>
-
         <nav class="menu">
 
             {% if session.get("admin") %}
@@ -71,10 +61,25 @@
             <a href="/impressum">Impressum</a>
             <span>|</span>
             <a href="/datenschutz">Datenschutz</a>
+
+            <div class="sidebar-copy">
+                ServicePilot © All Rights Reserved by Max Aßmann.
+            </div>
         </div>
     </aside>
 
     <main class="main">
+        <div class="top-theme-switch">
+            <span>🌙</span>
+            <form method="post" action="/toggle-theme">
+                <label class="switch">
+                    <input type="checkbox" onchange="this.form.submit()" {% if theme == 'light' %}checked{% endif %}>
+                    <span class="slider"></span>
+                </label>
+            </form>
+            <span>☀️</span>
+        </div>
+
         {% block content %}{% endblock %}
     </main>
 
@@ -84,7 +89,7 @@
     <a href="/impressum">Impressum</a> |
     <a href="/datenschutz">Datenschutz</a>
     <br>
-    All Rights Reserved by Max Aßmann.
+    ServicePilot © All Rights Reserved by Max Aßmann.
 </footer>
 
 <script src="/static/js/main.js"></script>

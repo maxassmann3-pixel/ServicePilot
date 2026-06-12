@@ -9,7 +9,7 @@
     </div>
 </div>
 
-<div class="card-grid">
+<div class="card-grid admin-overview-grid">
     {% for item in overview %}
     <div class="card admin-fleet-card">
 
@@ -19,7 +19,7 @@
                 <p>{{ item.total }} Einträge im Fuhrpark</p>
             </div>
 
-            <a href="/fleet-pdf/{{ item.fleet.id }}">
+            <a href="/fleet-pdf/{{ item.fleet.id }}" target="_blank">
                 <button class="btn btn-small">Fuhrpark als PDF</button>
             </a>
         </div>
@@ -38,9 +38,9 @@
         </div>
 
         <div class="dashboard-stats">
-            <span class="dot-red"></span> Rot: {{ item.red }}
-            <span class="dot-yellow"></span> Gelb: {{ item.yellow }}
-            <span class="dot-green"></span> Grün: {{ item.green }}
+            <span><span class="dot-red"></span>Rot: {{ item.red }}</span>
+            <span><span class="dot-yellow"></span>Gelb: {{ item.yellow }}</span>
+            <span><span class="dot-green"></span>Grün: {{ item.green }}</span>
         </div>
 
         <br>
@@ -53,12 +53,24 @@
                     <img src="{{ m.image_url }}" class="admin-machine-img">
                 {% else %}
                     <div class="admin-machine-placeholder">
-                        {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
+                        {% if m.type == "vehicle" %}
+                            🚛
+                        {% elif m.type == "trailer" %}
+                            ⚙️
+                        {% elif m.type == "small_device" %}
+                            🪚
+                        {% else %}
+                            🚜
+                        {% endif %}
                     </div>
                 {% endif %}
             </div>
 
             <div class="admin-machine-info">
+                <div class="card-actions">
+                    <a class="pdf-chip" href="/service-pdf/{{ m.id }}" target="_blank">⋮ PDF</a>
+                </div>
+
                 {% if m.final_color == "red" %}
                     <span class="status-red">🔴 Dringend</span>
                 {% elif m.final_color == "yellow" %}
@@ -78,10 +90,6 @@
                 {% endif %}
 
                 <p>Standort: {{ m.current_location }}</p>
-
-                <a href="/service-pdf/{{ m.id }}">
-                    <button class="btn btn-small">Servicekarte PDF</button>
-                </a>
 
                 <a href="/edit-machine/{{ m.id }}">
                     <button class="btn btn-small">Bearbeiten</button>

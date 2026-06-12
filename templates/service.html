@@ -22,8 +22,9 @@
         {% endif %}
 
         <div class="machine-card-body">
-            <div class="card-menu">
-                <a href="/service-pdf/{{ m.id }}">⋮ PDF</a>
+
+            <div class="card-actions">
+                <a class="pdf-chip" href="/service-pdf/{{ m.id }}" target="_blank">⋮ PDF</a>
             </div>
 
             {% if m.final_color == "red" %}
