@@ -14,6 +14,11 @@
 <div id="splash">
     <div class="splash-inner">
         <img src="/static/img/servicepilot_logo.png">
+
+        <div class="loading-bar">
+            <div></div>
+        </div>
+
         <div class="splash-copyright">
             All Rights Reserved by Max Aßmann.
         </div>
@@ -32,13 +37,13 @@
         {% endif %}
 
         <form method="post" action="/toggle-theme" class="theme-form">
-            <button class="theme-toggle" type="submit">
-                {% if theme == "dark" %}
-                    🌙 Dunkel
-                {% else %}
-                    ☀️ Hell
-                {% endif %}
-            </button>
+            <label class="switch">
+                <input type="checkbox" onchange="this.form.submit()" {% if theme == 'light' %}checked{% endif %}>
+                <span class="slider"></span>
+            </label>
+            <span class="theme-label">
+                {% if theme == "light" %}Hellmodus{% else %}Dunkelmodus{% endif %}
+            </span>
         </form>
 
         <nav class="menu">

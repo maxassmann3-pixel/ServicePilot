@@ -34,15 +34,13 @@
                 #ffd166 {{ item.red_deg }}deg {{ item.yellow_deg }}deg,
                 #6ee7a8 {{ item.yellow_deg }}deg 360deg
              );">
-            <div class="donut-hole">
-                {{ item.total }}
-            </div>
+            <div class="donut-hole">{{ item.total }}</div>
         </div>
 
         <div class="dashboard-stats">
-            <span class="status-red">Rot: {{ item.red }}</span>
-            <span class="status-yellow">Gelb: {{ item.yellow }}</span>
-            <span class="status-green">Grün: {{ item.green }}</span>
+            <span class="dot-red"></span> Rot: {{ item.red }}
+            <span class="dot-yellow"></span> Gelb: {{ item.yellow }}
+            <span class="dot-green"></span> Grün: {{ item.green }}
         </div>
 
         <br>
@@ -84,12 +82,11 @@
                 <a href="/service-pdf/{{ m.id }}">
                     <button class="btn btn-small">Servicekarte PDF</button>
                 </a>
-            </div>
 
-            <form method="post" action="/admin/delete-machine/{{ m.id }}" class="admin-delete-form">
-                <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort" required>
-                <button class="btn btn-red btn-small">Löschen</button>
-            </form>
+                <a href="/edit-machine/{{ m.id }}">
+                    <button class="btn btn-small">Bearbeiten</button>
+                </a>
+            </div>
 
         </div>
         {% endfor %}

@@ -16,11 +16,11 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import getSampleStyleSheet
 
 
 app = Flask(__name__)
-app.secret_key = "servicepilot_postgres_v5"
+app.secret_key = "servicepilot_postgres_v6"
 
 ADMIN_PASSWORD = "admin123"
 BERLIN = ZoneInfo("Europe/Berlin")
@@ -376,10 +376,8 @@ def type_name(machine):
 
     if t == "vehicle":
         return "Fahrzeug"
-
     if t == "trailer":
         return "Gerät / Anhänger"
-
     if t == "small_device":
         return "Kleingerät"
 
@@ -508,42 +506,36 @@ def build_fleet_pdf(fleet, machines):
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=1.7 * cm,
-        leftMargin=1.7 * cm,
-        topMargin=1.8 * cm,
-        bottomMargin=1.8 * cm
+        rightMargin=1.5 * cm,
+        leftMargin=1.5 * cm,
+        topMargin=1.6 * cm,
+        bottomMargin=1.6 * cm
     )
 
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "TitleBlue",
-        parent=styles["Title"],
-        textColor=colors.HexColor("#2f8cff")
-    )
+    normal = styles["Normal"]
 
     story = []
 
-    header_data = [
-        [
-            Paragraph(f"<b>Fuhrparkbericht: {fleet['name']}</b>", title_style),
-            image_data_to_reportlab(fleet.get("profile_image"), 3.2 * cm, 2.2 * cm)
-        ]
-    ]
+    logo = image_data_to_reportlab(fleet.get("profile_image"), 3.0 * cm, 2.0 * cm)
 
-    header_table = Table(header_data, colWidths=[12 * cm, 4 * cm])
-    header_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    header = Table([
+        [
+            Paragraph(f"<b>Fuhrparkbericht: {fleet['name']}</b>", styles["Title"]),
+            logo
+        ]
+    ], colWidths=[12 * cm, 4 * cm])
+
+    header.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-        ("BOX", (0, 0), (-1, -1), 0, colors.white)
+        ("VALIGN", (0, 0), (-1, -1), "TOP")
     ]))
 
-    story.append(header_table)
-    story.append(Paragraph(f"Erstellt am: {now_dt().strftime('%d.%m.%Y %H:%M:%S')} Uhr", styles["Normal"]))
-    story.append(Spacer(1, 0.5 * cm))
+    story.append(header)
+    story.append(Paragraph(f"Erstellt am: {now_dt().strftime('%d.%m.%Y %H:%M:%S')} Uhr", normal))
+    story.append(Spacer(1, 0.35 * cm))
 
     for m in machines:
-        status = "ROT / dringend" if m["final_color"] == "red" else "GELB / Achtung" if m["final_color"] == "yellow" else "GRÜN / OK"
-
         if m["type"] == "vehicle":
             stand_label = "Kilometerstand"
             unit_text = "km"
@@ -551,45 +543,39 @@ def build_fleet_pdf(fleet, machines):
             stand_label = "Betriebsstundenstand"
             unit_text = "h"
 
-        machine_img = image_data_to_reportlab(m.get("image_url"), 4 * cm, 3 * cm)
+        status_text = "● Rot / dringend" if m["final_color"] == "red" else "● Gelb / Achtung" if m["final_color"] == "yellow" else "● Grün / OK"
 
-        card = [
-            [Paragraph(f"<b>{m['name']}</b>", styles["Heading3"]), Paragraph(f"<b>{status}</b>", styles["Normal"])],
-            ["Art", m["type_name"]],
-            [stand_label, f"{m['current_value']} {unit_text}"],
-            ["Rest bis Service", f"{m['rest']} {unit_text}"],
-            ["Verantwortlicher", m.get("responsible", "")],
-            ["Standort", "ortsunabhängig" if m.get("independent") else m.get("current_location", "")],
-            ["Anbaugeräte", m.get("attachments", "")]
+        img = image_data_to_reportlab(m.get("image_url"), 2.6 * cm, 2.0 * cm)
+
+        data = [
+            [
+                img,
+                Paragraph(
+                    f"<b>{m['name']}</b><br/>"
+                    f"{status_text}<br/>"
+                    f"{m['type_name']}<br/>"
+                    f"{stand_label}: {m['current_value']} {unit_text}<br/>"
+                    f"Rest bis Service: {m['rest']} {unit_text}<br/>"
+                    f"Standort: {'ortsunabhängig' if m.get('independent') else m.get('current_location', '')}<br/>"
+                    f"Verantwortlicher: {m.get('responsible', '')}",
+                    normal
+                )
+            ]
         ]
 
-        if machine_img:
-            card.append(["Bild", machine_img])
-
-        table = Table(card, colWidths=[5 * cm, 10 * cm])
+        table = Table(data, colWidths=[3.0 * cm, 13.0 * cm])
         table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8f4ff")),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 7),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f5f7fa")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
             ("TOPPADDING", (0, 0), (-1, -1), 6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ]))
 
         story.append(table)
-
-        if m.get("notes"):
-            story.append(Spacer(1, 0.15 * cm))
-            story.append(Paragraph("<b>Notizen / Mängel:</b>", styles["Normal"]))
-
-            for n in m["notes"]:
-                story.append(Paragraph(f"- {n.get('priority', '')}: {n.get('text', '')}", styles["Normal"]))
-                img = image_data_to_reportlab(n.get("photo"), 8 * cm, 4 * cm)
-                if img:
-                    story.append(img)
-
-        story.append(Spacer(1, 0.5 * cm))
+        story.append(Spacer(1, 0.25 * cm))
 
     doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
     buffer.seek(0)
@@ -609,39 +595,76 @@ def build_service_pdf(machine):
     )
 
     styles = getSampleStyleSheet()
+    normal = styles["Normal"]
+
     story = []
 
-    story.append(Paragraph(f"<b>Servicekarte: {machine['name']}</b>", styles["Title"]))
-    story.append(Paragraph(f"Erstellt am: {now_dt().strftime('%d.%m.%Y %H:%M:%S')} Uhr", styles["Normal"]))
-    story.append(Spacer(1, 0.4 * cm))
+    fleet = sql_fetchone("SELECT * FROM fleets WHERE id = %s;", (machine["fleet_id"],))
+    logo = image_data_to_reportlab(fleet.get("profile_image") if fleet else "", 3.0 * cm, 2.0 * cm)
 
-    img = image_data_to_reportlab(machine.get("image_url"), 8 * cm, 4 * cm)
+    header = Table([
+        [
+            Paragraph(f"<b>Servicekarte: {machine['name']}</b>", styles["Title"]),
+            logo
+        ]
+    ], colWidths=[12 * cm, 4 * cm])
+
+    header.setStyle(TableStyle([
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP")
+    ]))
+
+    story.append(header)
+    story.append(Paragraph(f"Ausgedruckt von: {current_user()}", normal))
+    story.append(Paragraph(f"Erstellt am: {now_dt().strftime('%d.%m.%Y %H:%M:%S')} Uhr", normal))
+    story.append(Spacer(1, 0.35 * cm))
+
+    img = image_data_to_reportlab(machine.get("image_url"), 7.5 * cm, 4.0 * cm)
     if img:
         story.append(img)
-        story.append(Spacer(1, 0.3 * cm))
+        story.append(Spacer(1, 0.25 * cm))
 
-    story.append(Paragraph(f"<b>Art:</b> {machine['type_name']}", styles["Normal"]))
-    story.append(Paragraph(f"<b>Standort:</b> {machine.get('current_location', '')}", styles["Normal"]))
-    story.append(Paragraph(f"<b>Verantwortlicher:</b> {machine.get('responsible', '')}", styles["Normal"]))
-    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph(f"<b>Art:</b> {machine['type_name']}", normal))
+    story.append(Paragraph(f"<b>Standort:</b> {machine.get('current_location', '')}", normal))
+    story.append(Paragraph(f"<b>Verantwortlicher:</b> {machine.get('responsible', '')}", normal))
+    story.append(Spacer(1, 0.35 * cm))
 
-    checklist = CHECKLISTS.get(machine.get("type", "machine"), CHECKLISTS["machine"])
     story.append(Paragraph("<b>Wartungscheckliste:</b>", styles["Heading2"]))
 
-    for item in checklist:
-        story.append(Paragraph(f"☐ {item}", styles["Normal"]))
+    checklist = CHECKLISTS.get(machine.get("type", "machine"), CHECKLISTS["machine"])
 
-    story.append(Spacer(1, 0.4 * cm))
-    story.append(Paragraph("<b>Offene Notizen / Mängel:</b>", styles["Heading2"]))
+    for item in checklist:
+        story.append(Paragraph(f"☐ {item}", normal))
+
+    story.append(Spacer(1, 0.35 * cm))
+    story.append(Paragraph("<b>Offene Mängel / Notizen:</b>", styles["Heading2"]))
 
     if machine.get("notes"):
         for n in machine["notes"]:
-            story.append(Paragraph(f"- {n.get('priority', '')}: {n.get('text', '')}", styles["Normal"]))
+            story.append(Paragraph(f"☐ {n.get('priority', '')}: {n.get('text', '')}", normal))
             img = image_data_to_reportlab(n.get("photo"), 8 * cm, 4 * cm)
             if img:
                 story.append(img)
     else:
-        story.append(Paragraph("Keine offenen Notizen vorhanden.", styles["Normal"]))
+        story.append(Paragraph("Keine offenen Mängel vorhanden.", normal))
+
+    story.append(Spacer(1, 1.0 * cm))
+
+    story.append(Paragraph("<b>Bestätigung Service erledigt:</b>", styles["Heading2"]))
+
+    sign_table = Table([
+        ["Datum", "Ort", "Unterschrift Mitarbeiter"],
+        ["", "", ""]
+    ], colWidths=[4.5 * cm, 4.5 * cm, 7 * cm])
+
+    sign_table.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 0.8, colors.black),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeee")),
+        ("ROWHEIGHT", (0, 1), (-1, 1), 1.2 * cm),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+
+    story.append(sign_table)
 
     doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
     buffer.seek(0)
@@ -987,10 +1010,7 @@ def reports():
         new_location_select = request.form.get("new_location_select", "")
         new_location_text = request.form.get("new_location_text", "").strip()
 
-        if location_change:
-            final_location = new_location_text if new_location_text else new_location_select
-        else:
-            final_location = selected_location
+        final_location = new_location_text if location_change and new_location_text else new_location_select if location_change else selected_location
 
         sql_execute("""
             UPDATE machines SET current_value=%s, current_location=%s, independent=%s
