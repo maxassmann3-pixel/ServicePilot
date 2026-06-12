@@ -7,6 +7,10 @@
         <h1>Service durchführen</h1>
         <p>{{ machine.name }} prüfen, Mängel beheben und Wartung abschließen.</p>
     </div>
+
+    <a href="/service-pdf/{{ machine.id }}">
+        <button class="btn">Servicekarte PDF</button>
+    </a>
 </div>
 
 <div class="card">
@@ -55,14 +59,7 @@
         {% if machine.notes %}
             {% for n in machine.notes %}
             <div class="mini-note">
-                {% if n.priority == "red" %}
-                    🔴
-                {% elif n.priority == "yellow" %}
-                    🟡
-                {% else %}
-                    🟢
-                {% endif %}
-
+                {% if n.priority == "red" %}🔴{% elif n.priority == "yellow" %}🟡{% else %}🟢{% endif %}
                 <strong>{{ n.text }}</strong>
 
                 {% if n.photo %}

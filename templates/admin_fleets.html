@@ -5,7 +5,7 @@
 <div class="header">
     <div>
         <h1>Fuhrparkverwaltung</h1>
-        <p>Fuhrparke anlegen, Passwörter festlegen, Profilbilder speichern und alte Maschinen übernehmen.</p>
+        <p>Fuhrparke anlegen, bearbeiten, exportieren oder löschen.</p>
     </div>
 </div>
 
@@ -16,15 +16,15 @@
         <input type="hidden" name="action" value="create_fleet">
 
         <label>Fuhrparkname</label>
-        <input name="fleet_name" placeholder="z. B. Bohnes Fuhrpark" required>
+        <input name="fleet_name" placeholder="z. B. Forst & Landschaftsbau Weiß" required>
 
         <label>Passwort festlegen</label>
-        <input name="fleet_password" type="password" placeholder="Fuhrpark-Passwort" required>
+        <input name="fleet_password" type="password" required>
 
         <label>Profilbild aus Galerie hochladen</label>
         <input name="profile_image_file" type="file" accept="image/*">
 
-        <label>oder Profilbild-URL einfügen</label>
+        <label>oder Profilbild-URL</label>
         <input name="profile_image" placeholder="https://...">
 
         <button class="btn">Fuhrpark anlegen</button>
@@ -34,20 +34,21 @@
 <br>
 
 <div class="machine-card-grid">
-
     {% for fleet in fleets %}
     <div class="machine-card">
 
         {% if fleet.profile_image %}
             <img src="{{ fleet.profile_image }}">
         {% else %}
-            <div style="height:150px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.06);">
-                <span style="font-size:42px;">🏢</span>
-            </div>
+            <div class="machine-placeholder">🏢</div>
         {% endif %}
 
         <div class="machine-card-body">
             <h3>{{ fleet.name }}</h3>
+
+            <a href="/fleet-pdf/{{ fleet.id }}">
+                <button class="btn btn-small">Fuhrpark als PDF speichern</button>
+            </a>
 
             <form method="post" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="update_fleet">
@@ -56,48 +57,41 @@
                 <label>Fuhrparkname</label>
                 <input name="fleet_name" value="{{ fleet.name }}" required>
 
-                <label>Passwort festlegen / ändern</label>
+                <label>Passwort ändern</label>
                 <input name="fleet_password" type="password" placeholder="Leer lassen = altes Passwort bleibt">
 
-                <label>Neues Profilbild aus Galerie hochladen</label>
+                <label>Neues Profilbild hochladen</label>
                 <input name="profile_image_file" type="file" accept="image/*">
 
                 <label>oder Profilbild-URL</label>
                 <input name="profile_image" value="{{ fleet.profile_image }}">
 
-                <button class="btn btn-small">Fuhrpark speichern</button>
+                <button class="btn btn-small">Speichern</button>
             </form>
 
             <br>
 
-            <form action="/admin/migrate-json-to-fleet" method="post">
-                <input type="hidden" name="fleet_id" value="{{ fleet.id }}">
-
-                <label>Alte Maschinen übernehmen</label>
+            <form action="/admin/delete-fleet/{{ fleet.id }}" method="post">
+                <label>Fuhrpark komplett löschen</label>
                 <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort" required>
-
-                <button class="btn btn-small">
-                    Alte Maschinen in diesen Fuhrpark übernehmen
-                </button>
-            </form>
-
-            <br>
-
-            <form action="/delete-all" method="post">
-                <input type="hidden" name="fleet_id" value="{{ fleet.id }}">
-
-                <label>Alle Maschinen löschen</label>
-                <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort" required>
-
-                <button class="btn btn-red btn-small">
-                    Maschinen dieses Fuhrparks löschen
-                </button>
+                <button class="btn btn-red btn-small">Fuhrpark löschen</button>
             </form>
 
         </div>
     </div>
     {% endfor %}
+</div>
 
+<br>
+
+<div class="card danger-card">
+    <h2>Komplettes Programm leeren</h2>
+    <p>Alle Fuhrparke, Maschinen, Nutzer, Notizen und Aktivitäten werden gelöscht.</p>
+
+    <form action="/admin/clear-program" method="post">
+        <input name="confirm_admin_password" type="password" placeholder="Admin-Passwort" required>
+        <button class="btn btn-red">Programm komplett leeren</button>
+    </form>
 </div>
 
 {% endblock %}

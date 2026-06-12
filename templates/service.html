@@ -4,95 +4,71 @@
 
 <div class="header">
     <div>
-        <h1>Servicecenter</h1>
+        <h1>Servicecenter (Werkstatt)</h1>
+        <p>Wartungen durchführen und einzelne Servicekarten als PDF speichern.</p>
     </div>
 </div>
 
-<div class="card">
-    <form method="get" action="/service" class="filter-box">
+<div class="machine-card-grid">
+    {% for m in machines %}
+    <div class="machine-card">
 
-        <select name="sort_by">
-            <option value="status" {% if sort_by == "status" %}selected{% endif %}>Nach Dringlichkeit</option>
-            <option value="type" {% if sort_by == "type" %}selected{% endif %}>Nach Kategorie</option>
-            <option value="responsible" {% if sort_by == "responsible" %}selected{% endif %}>Nach Verantwortlicher</option>
-            <option value="current_location" {% if sort_by == "current_location" %}selected{% endif %}>Nach aktuellem Standort</option>
-        </select>
+        {% if m.image_url %}
+            <img src="{{ m.image_url }}" alt="{{ m.name }}">
+        {% else %}
+            <div class="machine-placeholder">
+                {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
+            </div>
+        {% endif %}
 
-        <input name="filter" placeholder="Filter, z. B. Halle 2, Max, Fahrzeug" value="{{ filter_value }}">
-        <button class="btn">Anzeigen</button>
+        <div class="machine-card-body">
+            <div class="card-menu">
+                <a href="/service-pdf/{{ m.id }}">⋮ PDF</a>
+            </div>
 
-    </form>
-</div>
+            {% if m.final_color == "red" %}
+                <span class="status-red">🔴 Dringend</span>
+            {% elif m.final_color == "yellow" %}
+                <span class="status-yellow">🟡 Achtung</span>
+            {% else %}
+                <span class="status-green">🟢 OK</span>
+            {% endif %}
 
-<br>
+            <h3>{{ m.name }}</h3>
 
-<div class="table-box">
-    <table>
-        <tr>
-            <th>Status</th>
-            <th>Name</th>
-            <th>Kategorie</th>
-            <th>Stand</th>
-            <th>Rest</th>
-            <th>Verantwortlicher</th>
-            <th>Standort</th>
-            <th>Notizen</th>
-            <th>Aktion</th>
-        </tr>
+            {% if m.type == "vehicle" %}
+                <p><strong>Kilometerstand:</strong> {{ m.current_value }} km</p>
+                <p><strong>Rest bis Service:</strong> {{ m.rest }} km</p>
+            {% else %}
+                <p><strong>Betriebsstundenstand:</strong> {{ m.current_value }} h</p>
+                <p><strong>Rest bis Service:</strong> {{ m.rest }} h</p>
+            {% endif %}
 
-        {% for m in machines %}
-        <tr>
-            <td>
-                {% if m.final_color == "red" %}
-                    <span class="status-red">🔴 Sofort prüfen</span>
-                {% elif m.final_color == "yellow" %}
-                    <span class="status-yellow">🟡 Bald prüfen</span>
-                {% else %}
-                    <span class="status-green">🟢 OK</span>
-                {% endif %}
-            </td>
+            <p><strong>Standort:</strong> {% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}</p>
 
-            <td>{{ m.name }}</td>
-            <td>{{ m.type_name }}</td>
-            <td>{{ m.current_value }} {{ m.unit }}</td>
-            <td>{{ m.rest }} {{ m.unit }}</td>
-            <td>{{ m.responsible }}</td>
-
-            <td>
-                {% if m.independent %}
-                    ortsunabhängig
-                {% else %}
-                    {{ m.current_location }}
-                {% endif %}
-            </td>
-
-            <td>
-                {% if m.notes %}
+            {% if m.notes %}
+                <div class="mini-note-list">
+                    <strong>Notizen / Mängel:</strong>
                     {% for n in m.notes %}
                         <div class="mini-note">
-                            {% if n.priority == "red" %}
-                                <span class="status-red">🔴</span>
-                            {% elif n.priority == "yellow" %}
-                                <span class="status-yellow">🟡</span>
-                            {% else %}
-                                <span class="status-green">🟢</span>
-                            {% endif %}
+                            {% if n.priority == "red" %}🔴{% elif n.priority == "yellow" %}🟡{% else %}🟢{% endif %}
                             {{ n.text }}
+
+                            {% if n.photo %}
+                                <br>
+                                <img src="{{ n.photo }}" class="note-photo">
+                            {% endif %}
                         </div>
                     {% endfor %}
-                {% else %}
-                    —
-                {% endif %}
-            </td>
+                </div>
+            {% endif %}
 
-            <td>
-                <a href="/service-check/{{ m.id }}">
-                    <button class="btn btn-small">Service erledigen</button>
-                </a>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+            <a href="/service-check/{{ m.id }}">
+                <button class="btn">Service durchführen</button>
+            </a>
+        </div>
+    </div>
+    {% endfor %}
 </div>
 
 {% endblock %}

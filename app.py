@@ -1,12 +1,26 @@
-from flask import Flask, render_template, request, redirect, session
-import os, hashlib, time, secrets, base64, json
+from flask import Flask, render_template, request, redirect, session, send_file
+import os
+import hashlib
+import time
+import secrets
+import base64
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from io import BytesIO
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+
 app = Flask(__name__)
-app.secret_key = "servicepilot_postgres_v4"
+app.secret_key = "servicepilot_postgres_v5"
 
 ADMIN_PASSWORD = "admin123"
 BERLIN = ZoneInfo("Europe/Berlin")
@@ -375,7 +389,6 @@ def type_name(machine):
 def default_machine_image(machine):
     if machine.get("custom_image"):
         return machine.get("custom_image")
-
     return ""
 
 
@@ -450,6 +463,191 @@ def load_old_json_machines():
     return []
 
 
+def clear_entire_program():
+    sql_execute("DELETE FROM notes;")
+    sql_execute("DELETE FROM histories;")
+    sql_execute("DELETE FROM activities;")
+    sql_execute("DELETE FROM machines;")
+    sql_execute("DELETE FROM users;")
+    sql_execute("DELETE FROM fleets;")
+
+    sql_execute("""
+        INSERT INTO fleets (id, name, password_hash, profile_image)
+        VALUES (%s, %s, %s, %s);
+    """, ("default", "ServicePilot Fuhrpark", hash_password("fuhrpark123"), ""))
+
+
+def image_data_to_reportlab(data_url, max_width=4.5 * cm, max_height=3.2 * cm):
+    if not data_url or not str(data_url).startswith("data:image"):
+        return ""
+
+    try:
+        header, encoded = data_url.split(",", 1)
+        raw = base64.b64decode(encoded)
+        bio = BytesIO(raw)
+        img = Image(bio)
+        img._restrictSize(max_width, max_height)
+        return img
+    except Exception:
+        return ""
+
+
+def pdf_footer(canvas, doc):
+    canvas.saveState()
+    canvas.setStrokeColor(colors.black)
+    canvas.setLineWidth(1)
+    canvas.rect(1.2 * cm, 1.2 * cm, A4[0] - 2.4 * cm, A4[1] - 2.4 * cm)
+    canvas.setFont("Helvetica", 8)
+    canvas.drawCentredString(A4[0] / 2, 0.75 * cm, f"Seite {doc.page}")
+    canvas.restoreState()
+
+
+def build_fleet_pdf(fleet, machines):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1.7 * cm,
+        leftMargin=1.7 * cm,
+        topMargin=1.8 * cm,
+        bottomMargin=1.8 * cm
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "TitleBlue",
+        parent=styles["Title"],
+        textColor=colors.HexColor("#2f8cff")
+    )
+
+    story = []
+
+    header_data = [
+        [
+            Paragraph(f"<b>Fuhrparkbericht: {fleet['name']}</b>", title_style),
+            image_data_to_reportlab(fleet.get("profile_image"), 3.2 * cm, 2.2 * cm)
+        ]
+    ]
+
+    header_table = Table(header_data, colWidths=[12 * cm, 4 * cm])
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+        ("BOX", (0, 0), (-1, -1), 0, colors.white)
+    ]))
+
+    story.append(header_table)
+    story.append(Paragraph(f"Erstellt am: {now_dt().strftime('%d.%m.%Y %H:%M:%S')} Uhr", styles["Normal"]))
+    story.append(Spacer(1, 0.5 * cm))
+
+    for m in machines:
+        status = "ROT / dringend" if m["final_color"] == "red" else "GELB / Achtung" if m["final_color"] == "yellow" else "GRÜN / OK"
+
+        if m["type"] == "vehicle":
+            stand_label = "Kilometerstand"
+            unit_text = "km"
+        else:
+            stand_label = "Betriebsstundenstand"
+            unit_text = "h"
+
+        machine_img = image_data_to_reportlab(m.get("image_url"), 4 * cm, 3 * cm)
+
+        card = [
+            [Paragraph(f"<b>{m['name']}</b>", styles["Heading3"]), Paragraph(f"<b>{status}</b>", styles["Normal"])],
+            ["Art", m["type_name"]],
+            [stand_label, f"{m['current_value']} {unit_text}"],
+            ["Rest bis Service", f"{m['rest']} {unit_text}"],
+            ["Verantwortlicher", m.get("responsible", "")],
+            ["Standort", "ortsunabhängig" if m.get("independent") else m.get("current_location", "")],
+            ["Anbaugeräte", m.get("attachments", "")]
+        ]
+
+        if machine_img:
+            card.append(["Bild", machine_img])
+
+        table = Table(card, colWidths=[5 * cm, 10 * cm])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e8f4ff")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+
+        story.append(table)
+
+        if m.get("notes"):
+            story.append(Spacer(1, 0.15 * cm))
+            story.append(Paragraph("<b>Notizen / Mängel:</b>", styles["Normal"]))
+
+            for n in m["notes"]:
+                story.append(Paragraph(f"- {n.get('priority', '')}: {n.get('text', '')}", styles["Normal"]))
+                img = image_data_to_reportlab(n.get("photo"), 8 * cm, 4 * cm)
+                if img:
+                    story.append(img)
+
+        story.append(Spacer(1, 0.5 * cm))
+
+    doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
+    buffer.seek(0)
+    return buffer
+
+
+def build_service_pdf(machine):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1.7 * cm,
+        leftMargin=1.7 * cm,
+        topMargin=1.8 * cm,
+        bottomMargin=1.8 * cm
+    )
+
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph(f"<b>Servicekarte: {machine['name']}</b>", styles["Title"]))
+    story.append(Paragraph(f"Erstellt am: {now_dt().strftime('%d.%m.%Y %H:%M:%S')} Uhr", styles["Normal"]))
+    story.append(Spacer(1, 0.4 * cm))
+
+    img = image_data_to_reportlab(machine.get("image_url"), 8 * cm, 4 * cm)
+    if img:
+        story.append(img)
+        story.append(Spacer(1, 0.3 * cm))
+
+    story.append(Paragraph(f"<b>Art:</b> {machine['type_name']}", styles["Normal"]))
+    story.append(Paragraph(f"<b>Standort:</b> {machine.get('current_location', '')}", styles["Normal"]))
+    story.append(Paragraph(f"<b>Verantwortlicher:</b> {machine.get('responsible', '')}", styles["Normal"]))
+    story.append(Spacer(1, 0.4 * cm))
+
+    checklist = CHECKLISTS.get(machine.get("type", "machine"), CHECKLISTS["machine"])
+    story.append(Paragraph("<b>Wartungscheckliste:</b>", styles["Heading2"]))
+
+    for item in checklist:
+        story.append(Paragraph(f"☐ {item}", styles["Normal"]))
+
+    story.append(Spacer(1, 0.4 * cm))
+    story.append(Paragraph("<b>Offene Notizen / Mängel:</b>", styles["Heading2"]))
+
+    if machine.get("notes"):
+        for n in machine["notes"]:
+            story.append(Paragraph(f"- {n.get('priority', '')}: {n.get('text', '')}", styles["Normal"]))
+            img = image_data_to_reportlab(n.get("photo"), 8 * cm, 4 * cm)
+            if img:
+                story.append(img)
+    else:
+        story.append(Paragraph("Keine offenen Notizen vorhanden.", styles["Normal"]))
+
+    doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
+    buffer.seek(0)
+    return buffer
+
+
 @app.before_request
 def check_force_logout():
     if "user" in session and not is_admin():
@@ -468,7 +666,9 @@ def inject_global_data():
     return {
         "fleet_name": get_fleet_name(),
         "permissions": get_permissions() if "user" in session else {},
-        "is_admin": is_admin()
+        "is_admin": is_admin(),
+        "theme": session.get("theme", "dark"),
+        "current_fleet_id": current_fleet_id()
     }
 
 
@@ -490,6 +690,13 @@ def datenschutz():
 @app.route("/denied")
 def denied():
     return render_template("denied.html")
+
+
+@app.route("/toggle-theme", methods=["POST"])
+def toggle_theme():
+    current = session.get("theme", "dark")
+    session["theme"] = "light" if current == "dark" else "dark"
+    return redirect(request.referrer or "/dashboard")
 
 
 @app.route("/login", methods=["POST"])
@@ -523,7 +730,7 @@ def admin_login():
     if request.form["admin_password"] == ADMIN_PASSWORD:
         session["user"] = "Admin"
         session["admin"] = True
-        session["fleet_id"] = "default"
+        session.pop("fleet_id", None)
         return redirect("/admin/overview")
 
     return redirect("/denied")
@@ -601,6 +808,9 @@ def dashboard():
     if "user" not in session:
         return redirect("/")
 
+    if is_admin():
+        return redirect("/admin/overview")
+
     if not current_fleet_id():
         return redirect("/fleet-select")
 
@@ -625,12 +835,14 @@ def machines():
     if "user" not in session:
         return redirect("/")
 
-    if not current_fleet_id():
+    if not is_admin() and not current_fleet_id():
         return redirect("/fleet-select")
 
     if request.method == "POST":
         if not has_perm("create_machines"):
             return no_permission("Du hast keine Berechtigung, Maschinen anzulegen.")
+
+        target_fleet_id = request.form.get("fleet_id") if is_admin() else current_fleet_id()
 
         uploaded = uploaded_image_to_data_url(request.files.get("machine_image_file"))
         custom_image = uploaded or request.form.get("machine_image_url", "")
@@ -644,7 +856,7 @@ def machines():
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
         """, (
             str(time.time()).replace(".", ""),
-            current_fleet_id(),
+            target_fleet_id,
             request.form["name"],
             request.form["type"],
             request.form.get("license_plate", ""),
@@ -660,7 +872,16 @@ def machines():
 
         log_action("Eintrag angelegt", f"{request.form['name']} wurde angelegt.")
 
-    return render_template("machines.html", machines=get_machines(), edit_machine=None)
+    fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;") if is_admin() else []
+    machines_data = []
+
+    if is_admin():
+        for fleet in fleets:
+            machines_data.extend(get_machines(fleet["id"]))
+    else:
+        machines_data = get_machines()
+
+    return render_template("machines.html", machines=machines_data, edit_machine=None, fleets=fleets)
 
 
 @app.route("/edit-machine/<machine_id>", methods=["GET", "POST"])
@@ -674,6 +895,9 @@ def edit_machine(machine_id):
     machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
     if not machine:
         return "Eintrag nicht gefunden"
+
+    if not is_admin() and machine["fleet_id"] != current_fleet_id():
+        return no_permission("Du hast keine Berechtigung, diese Maschine zu bearbeiten.")
 
     if request.method == "POST":
         uploaded = uploaded_image_to_data_url(request.files.get("machine_image_file"))
@@ -718,7 +942,10 @@ def edit_machine(machine_id):
         log_action("Eintrag bearbeitet", f"{machine['name']} → {request.form['name']}")
         return redirect("/machines")
 
-    return render_template("machines.html", machines=get_machines(), edit_machine=machine)
+    fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;") if is_admin() else []
+    machines_data = get_machines(machine["fleet_id"]) if is_admin() else get_machines()
+
+    return render_template("machines.html", machines=machines_data, edit_machine=machine, fleets=fleets)
 
 
 @app.route("/reports", methods=["GET", "POST"])
@@ -726,7 +953,7 @@ def reports():
     if "user" not in session:
         return redirect("/")
 
-    if not current_fleet_id():
+    if not is_admin() and not current_fleet_id():
         return redirect("/fleet-select")
 
     if not has_perm("send_reports"):
@@ -735,6 +962,9 @@ def reports():
     if request.method == "POST":
         machine_id = request.form["machine_id"]
         machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
+
+        if not is_admin() and machine["fleet_id"] != current_fleet_id():
+            return no_permission("Du hast keine Berechtigung für diese Maschine.")
 
         exact = request.form.get("new_value", "").strip()
         today_used = request.form.get("today_used", "").strip()
@@ -818,16 +1048,25 @@ def reports():
 
         log_action(
             "Tagesbericht",
-            f"{machine['name']} | {old_value} → {new_value} ({value_type}) | Standort: {old_location} → {final_location}"
+            f"{machine['name']} | {old_value} → {new_value} ({value_type}) | Standort: {old_location} → {final_location}",
+            machine["fleet_id"]
         )
 
-    machines_list = get_machines()
+    if is_admin():
+        machines_list = []
+        fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;")
+        for fleet in fleets:
+            machines_list.extend(get_machines(fleet["id"]))
+    else:
+        machines_list = get_machines()
+        fleets = []
+
     locations = sorted(
         {m["current_location"] for m in machines_list if m.get("current_location")},
         key=lambda x: x.lower()
     )
 
-    return render_template("reports.html", machines=machines_list, locations=locations)
+    return render_template("reports.html", machines=machines_list, locations=locations, fleets=fleets)
 
 
 @app.route("/service")
@@ -835,13 +1074,20 @@ def service():
     if "user" not in session:
         return redirect("/")
 
-    if not current_fleet_id():
+    if not is_admin() and not current_fleet_id():
         return redirect("/fleet-select")
 
     if not has_perm("do_service"):
         return no_permission("Du hast keine Berechtigung, Servicearbeiten durchzuführen.")
 
-    machines_data = get_machines()
+    if is_admin():
+        fleets = sql_fetchall("SELECT * FROM fleets ORDER BY name ASC;")
+        machines_data = []
+        for fleet in fleets:
+            machines_data.extend(get_machines(fleet["id"]))
+    else:
+        machines_data = get_machines()
+
     return render_template("service.html", machines=machines_data, sort_by="status", filter_value="")
 
 
@@ -856,6 +1102,9 @@ def service_check(machine_id):
     machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
     if not machine:
         return "Eintrag nicht gefunden"
+
+    if not is_admin() and machine["fleet_id"] != current_fleet_id():
+        return no_permission("Du hast keine Berechtigung für diese Maschine.")
 
     machine = prepare_machines([machine])[0]
     checklist = CHECKLISTS.get(machine.get("type", "machine"), CHECKLISTS["machine"])
@@ -874,6 +1123,9 @@ def service_done(machine_id):
     machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
     if not machine:
         return "Eintrag nicht gefunden"
+
+    if not is_admin() and machine["fleet_id"] != current_fleet_id():
+        return no_permission("Du hast keine Berechtigung für diese Maschine.")
 
     settings = get_settings()
     increase = float(settings.get(machine["type"], 500))
@@ -922,29 +1174,61 @@ def service_done(machine_id):
         now_dt()
     ))
 
-    log_action("Service erledigt", f"{machine['name']} | Intervall erhöht um {increase}")
+    log_action("Service erledigt", f"{machine['name']} | Intervall erhöht um {increase}", machine["fleet_id"])
 
     return redirect("/service")
+
+
+@app.route("/fleet-pdf/<fleet_id>")
+def fleet_pdf(fleet_id):
+    if "user" not in session:
+        return redirect("/")
+
+    if not is_admin() and current_fleet_id() != fleet_id:
+        return no_permission("Du hast keine Berechtigung, diesen Fuhrpark zu exportieren.")
+
+    fleet = sql_fetchone("SELECT * FROM fleets WHERE id = %s;", (fleet_id,))
+    if not fleet:
+        return "Fuhrpark nicht gefunden"
+
+    machines = get_machines(fleet_id)
+    pdf = build_fleet_pdf(fleet, machines)
+
+    return send_file(
+        pdf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"Fuhrpark_{fleet['name']}.pdf"
+    )
+
+
+@app.route("/service-pdf/<machine_id>")
+def service_pdf(machine_id):
+    if "user" not in session:
+        return redirect("/")
+
+    machine = sql_fetchone("SELECT * FROM machines WHERE id = %s;", (machine_id,))
+    if not machine:
+        return "Maschine nicht gefunden"
+
+    if not is_admin() and current_fleet_id() != machine["fleet_id"]:
+        return no_permission("Du hast keine Berechtigung, diese Servicekarte zu exportieren.")
+
+    machine = prepare_machines([machine])[0]
+    pdf = build_service_pdf(machine)
+
+    return send_file(
+        pdf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"Servicekarte_{machine['name']}.pdf"
+    )
 
 
 @app.route("/admin")
 def admin():
     if not is_admin():
         return redirect("/dashboard")
-
-    return redirect("/admin/overview")
-
-@app.route("/admin/delete-machine/<machine_id>", methods=["POST"])
-def admin_delete_machine(machine_id):
-    if not is_admin():
-        return redirect("/dashboard")
-
-    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
-        return redirect("/denied")
-
-    sql_execute("DELETE FROM notes WHERE machine_id = %s;", (machine_id,))
-    sql_execute("DELETE FROM histories WHERE machine_id = %s;", (machine_id,))
-    sql_execute("DELETE FROM machines WHERE id = %s;", (machine_id,))
 
     return redirect("/admin/overview")
 
@@ -1083,6 +1367,50 @@ def migrate_json_to_fleet():
     return redirect("/admin/fleets")
 
 
+@app.route("/admin/delete-machine/<machine_id>", methods=["POST"])
+def admin_delete_machine(machine_id):
+    if not is_admin():
+        return redirect("/dashboard")
+
+    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
+        return redirect("/denied")
+
+    sql_execute("DELETE FROM notes WHERE machine_id = %s;", (machine_id,))
+    sql_execute("DELETE FROM histories WHERE machine_id = %s;", (machine_id,))
+    sql_execute("DELETE FROM machines WHERE id = %s;", (machine_id,))
+
+    return redirect("/admin/overview")
+
+
+@app.route("/admin/delete-fleet/<fleet_id>", methods=["POST"])
+def admin_delete_fleet(fleet_id):
+    if not is_admin():
+        return redirect("/dashboard")
+
+    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
+        return redirect("/denied")
+
+    sql_execute("DELETE FROM notes WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);", (fleet_id,))
+    sql_execute("DELETE FROM histories WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);", (fleet_id,))
+    sql_execute("DELETE FROM machines WHERE fleet_id=%s;", (fleet_id,))
+    sql_execute("DELETE FROM activities WHERE fleet_id=%s;", (fleet_id,))
+    sql_execute("DELETE FROM fleets WHERE id=%s;", (fleet_id,))
+
+    return redirect("/admin/fleets")
+
+
+@app.route("/admin/clear-program", methods=["POST"])
+def admin_clear_program():
+    if not is_admin():
+        return redirect("/dashboard")
+
+    if request.form.get("confirm_admin_password") != ADMIN_PASSWORD:
+        return redirect("/denied")
+
+    clear_entire_program()
+    return redirect("/admin/overview")
+
+
 @app.route("/admin/users", methods=["GET", "POST"])
 def admin_users():
     if not is_admin():
@@ -1172,14 +1500,8 @@ def delete_all():
 
     fleet_id = request.form.get("fleet_id", "default")
 
-    sql_execute(
-        "DELETE FROM notes WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);",
-        (fleet_id,)
-    )
-    sql_execute(
-        "DELETE FROM histories WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);",
-        (fleet_id,)
-    )
+    sql_execute("DELETE FROM notes WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);", (fleet_id,))
+    sql_execute("DELETE FROM histories WHERE machine_id IN (SELECT id FROM machines WHERE fleet_id=%s);", (fleet_id,))
     sql_execute("DELETE FROM machines WHERE fleet_id=%s;", (fleet_id,))
 
     return redirect("/admin/fleets")

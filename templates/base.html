@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="{{ theme }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 
-<body>
+<body class="{{ theme }}-mode">
 
 <div id="splash">
     <div class="splash-inner">
@@ -31,10 +31,23 @@
         </div>
         {% endif %}
 
+        <form method="post" action="/toggle-theme" class="theme-form">
+            <button class="theme-toggle" type="submit">
+                {% if theme == "dark" %}
+                    🌙 Dunkel
+                {% else %}
+                    ☀️ Hell
+                {% endif %}
+            </button>
+        </form>
+
         <nav class="menu">
 
             {% if session.get("admin") %}
                 <a class="{% if request.path == '/admin/overview' %}active{% endif %}" href="/admin/overview">📊 Dashboard</a>
+                <a class="{% if request.path == '/machines' %}active{% endif %}" href="/machines">🚜 Maschinen</a>
+                <a class="{% if request.path == '/reports' %}active{% endif %}" href="/reports">🕒 Tagesbericht</a>
+                <a class="{% if request.path == '/service' %}active{% endif %}" href="/service">🛠 Servicecenter</a>
                 <a class="{% if request.path == '/admin/fleets' %}active{% endif %}" href="/admin/fleets">🏢 Fuhrparkverwaltung</a>
                 <a class="{% if request.path == '/admin/users' %}active{% endif %}" href="/admin/users">👥 Nutzerverwaltung</a>
                 <a class="{% if request.path == '/admin/activity' %}active{% endif %}" href="/admin/activity">📋 Aktivitäten</a>
@@ -46,10 +59,14 @@
                 <a class="{% if request.path == '/service' %}active{% endif %}" href="/service">🛠 Servicecenter (Werkstatt)</a>
             {% endif %}
 
-            <a href="/impressum">ℹ️ Impressum</a>
-            <a href="/datenschutz">🔒 Datenschutz</a>
             <a href="/logout">🚪 Logout</a>
         </nav>
+
+        <div class="sidebar-bottom-links">
+            <a href="/impressum">Impressum</a>
+            <span>|</span>
+            <a href="/datenschutz">Datenschutz</a>
+        </div>
     </aside>
 
     <main class="main">

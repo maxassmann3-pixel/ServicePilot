@@ -13,7 +13,16 @@
     {% for item in overview %}
     <div class="card admin-fleet-card">
 
-        <h2>{{ item.fleet.name }}</h2>
+        <div class="fleet-card-header">
+            <div>
+                <h2>{{ item.fleet.name }}</h2>
+                <p>{{ item.total }} Einträge im Fuhrpark</p>
+            </div>
+
+            <a href="/fleet-pdf/{{ item.fleet.id }}">
+                <button class="btn btn-small">Fuhrpark als PDF</button>
+            </a>
+        </div>
 
         {% if item.fleet.profile_image %}
             <img src="{{ item.fleet.profile_image }}" class="fleet-overview-img">
@@ -46,15 +55,7 @@
                     <img src="{{ m.image_url }}" class="admin-machine-img">
                 {% else %}
                     <div class="admin-machine-placeholder">
-                        {% if m.type == "vehicle" %}
-                            🚛
-                        {% elif m.type == "trailer" %}
-                            ⚙️
-                        {% elif m.type == "small_device" %}
-                            🪚
-                        {% else %}
-                            🚜
-                        {% endif %}
+                        {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
                     </div>
                 {% endif %}
             </div>
@@ -79,6 +80,10 @@
                 {% endif %}
 
                 <p>Standort: {{ m.current_location }}</p>
+
+                <a href="/service-pdf/{{ m.id }}">
+                    <button class="btn btn-small">Servicekarte PDF</button>
+                </a>
             </div>
 
             <form method="post" action="/admin/delete-machine/{{ m.id }}" class="admin-delete-form">

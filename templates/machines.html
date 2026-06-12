@@ -18,6 +18,17 @@
         <form method="post" enctype="multipart/form-data" action="/machines">
     {% endif %}
 
+        {% if is_admin and fleets %}
+            <label>Fuhrpark auswählen</label>
+            <select name="fleet_id" required>
+                {% for fleet in fleets %}
+                <option value="{{ fleet.id }}" {% if edit_machine and edit_machine.fleet_id == fleet.id %}selected{% endif %}>
+                    {{ fleet.name }}
+                </option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
         <label>Name</label>
         <input name="name" value="{{ edit_machine.name if edit_machine else '' }}" placeholder="z. B. Liebherr R930" required>
 
@@ -76,10 +87,7 @@
     <div class="machine-card">
 
         {% if m.image_url %}
-            <img src="{{ m.image_url }}" alt="{{ m.name }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="machine-placeholder hidden-placeholder">
-                {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
-            </div>
+            <img src="{{ m.image_url }}" alt="{{ m.name }}">
         {% else %}
             <div class="machine-placeholder">
                 {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
@@ -97,8 +105,6 @@
 
             <h3>{{ m.name }}</h3>
 
-            <p><strong>Art:</strong> {{ m.type_name }}</p>
-
             {% if m.type == "vehicle" %}
                 <p><strong>Kilometerstand:</strong> {{ m.current_value }} km</p>
                 <p><strong>Rest bis Service:</strong> {{ m.rest }} km</p>
@@ -107,51 +113,16 @@
                 <p><strong>Rest bis Service:</strong> {{ m.rest }} h</p>
             {% endif %}
 
-            <p><strong>Verantwortlicher:</strong> {{ m.responsible }}</p>
-
-            <p>
-                <strong>Aktueller Standort:</strong>
-                {% if m.independent %}
-                    ortsunabhängig
-                {% else %}
-                    {{ m.current_location }}
-                {% endif %}
-            </p>
-
-            {% if m.license_plate %}
-                <p><strong>Kennzeichen:</strong> {{ m.license_plate }}</p>
-            {% endif %}
-
-            {% if m.tuv %}
-                <p><strong>TÜV:</strong> {{ m.tuv }}</p>
-            {% endif %}
-
-            {% if m.attachments %}
-                <p><strong>Anbaugeräte:</strong> {{ m.attachments }}</p>
-            {% endif %}
-
-            {% if m.notes %}
-                <div class="mini-note-list">
-                    <strong>Notizen:</strong>
-                    {% for n in m.notes %}
-                        <div class="mini-note">
-                            {% if n.priority == "red" %}🔴{% elif n.priority == "yellow" %}🟡{% else %}🟢{% endif %}
-                            {{ n.text }}
-
-                            {% if n.photo %}
-                                <br>
-                                <img src="{{ n.photo }}" class="note-photo">
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
+            <p><strong>Standort:</strong> {% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}</p>
 
             <a href="/edit-machine/{{ m.id }}">
                 <button class="btn btn-small">Bearbeiten</button>
             </a>
-        </div>
 
+            <a href="/service-pdf/{{ m.id }}">
+                <button class="btn btn-small">PDF</button>
+            </a>
+        </div>
     </div>
     {% endfor %}
 </div>
