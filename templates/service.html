@@ -4,8 +4,8 @@
 
 <div class="header">
     <div>
-        <h1>Servicecenter (Werkstatt)</h1>
-        <p>Wartungen durchführen und einzelne Servicekarten als PDF speichern.</p>
+        <h1>Servicecenter</h1>
+        <p>Wartungen durchführen und Servicekarten als PDF speichern.</p>
     </div>
 </div>
 
@@ -17,14 +17,22 @@
             <img src="{{ m.image_url }}" alt="{{ m.name }}">
         {% else %}
             <div class="machine-placeholder">
-                {% if m.type == "vehicle" %}🚛{% elif m.type == "trailer" %}⚙️{% elif m.type == "small_device" %}🪚{% else %}🚜{% endif %}
+                {% if m.type == "vehicle" %}
+                    🚛
+                {% elif m.type == "trailer" %}
+                    ⚙️
+                {% elif m.type == "small_device" %}
+                    🪚
+                {% else %}
+                    🚜
+                {% endif %}
             </div>
         {% endif %}
 
         <div class="machine-card-body">
 
             <div class="card-actions">
-                <a class="pdf-chip" href="/service-pdf/{{ m.id }}" target="_blank">⋮ PDF</a>
+                <a class="pdf-chip" href="/service-pdf/{{ m.id }}">PDF speichern</a>
             </div>
 
             {% if m.final_color == "red" %}
@@ -45,14 +53,29 @@
                 <p><strong>Rest bis Service:</strong> {{ m.rest }} h</p>
             {% endif %}
 
-            <p><strong>Standort:</strong> {% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}</p>
+            <p>
+                <strong>Standort:</strong>
+                {% if m.independent %}
+                    ortsunabhängig
+                {% else %}
+                    {{ m.current_location }}
+                {% endif %}
+            </p>
 
             {% if m.notes %}
                 <div class="mini-note-list">
                     <strong>Notizen / Mängel:</strong>
+
                     {% for n in m.notes %}
                         <div class="mini-note">
-                            {% if n.priority == "red" %}🔴{% elif n.priority == "yellow" %}🟡{% else %}🟢{% endif %}
+                            {% if n.priority == "red" %}
+                                🔴
+                            {% elif n.priority == "yellow" %}
+                                🟡
+                            {% else %}
+                                🟢
+                            {% endif %}
+
                             {{ n.text }}
 
                             {% if n.photo %}

@@ -25,8 +25,7 @@ body.light-mode{
     color:#1f2933;
 }
 
-/* Layout */
-
+/* Hauptaufbau der Web-App: Sidebar links, Inhalt rechts. */
 .app-container{
     display:flex;
     min-height:100vh;
@@ -75,12 +74,12 @@ body.light-mode .fleet-title{
 .main{
     width:100%;
     margin-left:250px;
-    padding:34px;
+    padding:52px 34px 34px 34px;
     max-width:1450px;
+    position:relative;
 }
 
-/* Menü */
-
+/* Menü links: bewusst große Klickflächen für Handy und Tablet. */
 .menu{
     display:flex;
     flex-direction:column;
@@ -117,8 +116,6 @@ body.light-mode .menu a.active{
     color:#fff;
 }
 
-/* Sidebar unten */
-
 .sidebar-bottom-links{
     margin-top:auto;
     padding-top:18px;
@@ -128,6 +125,7 @@ body.light-mode .menu a.active{
     gap:8px;
     color:#b8c0cc;
     font-size:12px;
+    flex-wrap:wrap;
 }
 
 .sidebar-bottom-links a{
@@ -139,23 +137,30 @@ body.light-mode .menu a.active{
     text-decoration:underline;
 }
 
-body.light-mode .sidebar-bottom-links{
-    border-top:1px solid rgba(0,0,0,0.10);
+.sidebar-copy{
+    width:100%;
+    margin-top:10px;
+    text-align:center;
+    font-size:11px;
+    line-height:1.45;
+    color:#b8c0cc;
 }
 
 body.light-mode .sidebar-bottom-links,
-body.light-mode .sidebar-bottom-links a{
+body.light-mode .sidebar-bottom-links a,
+body.light-mode .sidebar-copy{
     color:#475467;
 }
 
-/* Theme-Schieberegler */
-
-.theme-form{
-    margin:0 0 16px 0;
+/* Hell/Dunkel-Schalter rechts oben. */
+.top-theme-switch{
+    position:absolute;
+    top:18px;
+    right:28px;
     display:flex;
     align-items:center;
-    justify-content:center;
-    gap:10px;
+    gap:8px;
+    z-index:20;
 }
 
 .switch{
@@ -203,18 +208,7 @@ body.light-mode .sidebar-bottom-links a{
     transform:translateX(24px);
 }
 
-.theme-label{
-    font-size:13px;
-    color:#b8c0cc;
-    font-weight:700;
-}
-
-body.light-mode .theme-label{
-    color:#344054;
-}
-
-/* Header */
-
+/* Überschriftenbereich jeder Seite. */
 .header{
     display:flex;
     justify-content:space-between;
@@ -238,8 +232,7 @@ body.light-mode .header p{
     color:#475467;
 }
 
-/* Karten */
-
+/* Karten und Sedcards. */
 .card,
 .machine-card,
 .table-box{
@@ -272,9 +265,17 @@ body.light-mode .table-box{
     display:grid;
     grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
     gap:24px;
+    align-items:start;
 }
 
-/* Maschinenkarten */
+.admin-overview-grid{
+    align-items:start;
+}
+
+.admin-fleet-card{
+    height:auto !important;
+    min-height:unset !important;
+}
 
 .machine-card{
     overflow:hidden;
@@ -303,10 +304,6 @@ body.light-mode .table-box{
     user-select:none;
 }
 
-.hidden-placeholder{
-    display:none;
-}
-
 .machine-card-body{
     padding:20px;
 }
@@ -326,8 +323,29 @@ body.light-mode .machine-card-body p{
     color:#344054;
 }
 
-/* Formulare */
+.card-actions{
+    display:flex;
+    justify-content:flex-end;
+    margin-bottom:8px;
+}
 
+.pdf-chip{
+    display:inline-block;
+    padding:9px 14px;
+    border-radius:999px;
+    background:linear-gradient(135deg,#5db8ff,#2f8cff);
+    color:white;
+    text-decoration:none;
+    font-weight:800;
+    font-size:13px;
+}
+
+.pdf-chip:hover{
+    box-shadow:0 8px 20px rgba(93,184,255,0.28);
+    transform:translateY(-1px);
+}
+
+/* Formulare */
 form{
     width:100%;
 }
@@ -377,11 +395,6 @@ textarea{
     resize:vertical;
 }
 
-input[type="file"]{
-    padding:11px;
-    background:rgba(255,255,255,0.05);
-}
-
 .checkbox-row{
     display:flex;
     align-items:center;
@@ -398,7 +411,6 @@ input[type="file"]{
 }
 
 /* Buttons */
-
 .btn{
     display:inline-block;
     border:none;
@@ -427,12 +439,7 @@ input[type="file"]{
     color:#fff;
 }
 
-.btn-red:hover{
-    box-shadow:0 10px 25px rgba(255,96,96,0.22);
-}
-
-/* Status */
-
+/* Ampelstatus */
 .status-red{
     color:#ff6b6b;
     font-weight:800;
@@ -462,42 +469,7 @@ input[type="file"]{
 .dot-yellow{background:#ffd166;}
 .dot-green{background:#6ee7a8;}
 
-/* Tabellen */
-
-.table-box{
-    overflow:auto;
-    padding:0;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    min-width:850px;
-}
-
-th,
-td{
-    padding:15px 14px;
-    border-bottom:1px solid rgba(255,255,255,0.08);
-    text-align:left;
-    vertical-align:top;
-}
-
-th{
-    color:#5db8ff;
-    background:rgba(255,255,255,0.04);
-}
-
-td{
-    color:#e8edf5;
-}
-
-body.light-mode td{
-    color:#1f2933;
-}
-
 /* Notizen */
-
 .mini-note-list{
     margin-top:14px;
 }
@@ -525,7 +497,6 @@ body.light-mode .mini-note{
 }
 
 /* Admin Dashboard */
-
 .donut-chart{
     width:115px;
     height:115px;
@@ -630,8 +601,7 @@ body.light-mode .admin-machine-info p{
     color:#344054;
 }
 
-/* Login / Denied */
-
+/* Login */
 .login-wrapper{
     min-height:100vh;
     display:flex;
@@ -662,27 +632,7 @@ body.light-mode .login-card{
     margin:0 auto 24px auto;
 }
 
-.denied-card{
-    text-align:center;
-}
-
-.denied-img{
-    width:100%;
-    max-height:280px;
-    object-fit:cover;
-    border-radius:24px;
-    margin-bottom:22px;
-    box-shadow:0 14px 35px rgba(0,0,0,.35);
-}
-
-.denied-title{
-    color:#ff5d5d;
-    font-size:30px;
-    margin-bottom:24px;
-}
-
-/* Splash Ladebildschirm */
-
+/* Ladebildschirm */
 #splash{
     position:fixed;
     inset:0;
@@ -691,7 +641,7 @@ body.light-mode .login-card{
     align-items:center;
     justify-content:center;
     background:#17191d;
-    transition:opacity 0.28s ease;
+    transition:opacity 0.22s ease;
 }
 
 body.light-mode #splash{
@@ -749,8 +699,7 @@ body.light-mode .splash-copyright{
     color:#475467;
 }
 
-/* Footer */
-
+/* Allg. Layout Text */
 .copyright{
     text-align:center;
     color:#b8c0cc;
@@ -774,32 +723,7 @@ body.light-mode .copyright a{
     color:#475467;
 }
 
-/* Hintergrund-Icons */
-
-body::before{
-    content:"🚜";
-    position:fixed;
-    right:3%;
-    bottom:3%;
-    font-size:210px;
-    opacity:0.035;
-    pointer-events:none;
-    z-index:-1;
-}
-
-body::after{
-    content:"⚙️";
-    position:fixed;
-    left:270px;
-    bottom:2%;
-    font-size:160px;
-    opacity:0.03;
-    pointer-events:none;
-    z-index:-1;
-}
-
-/* Mobile */
-
+/* Handy-Ansicht */
 @media (max-width:900px){
     .app-container{
         display:block;
@@ -809,13 +733,11 @@ body::after{
         position:relative;
         width:100%;
         min-height:auto;
-        border-right:none;
-        border-bottom:1px solid rgba(255,255,255,0.08);
     }
 
     .main{
         margin-left:0;
-        padding:20px;
+        padding:56px 20px 20px 20px;
     }
 
     .menu{
@@ -844,16 +766,11 @@ body::after{
         width:100%;
         height:150px;
     }
-
-    body::before,
-    body::after{
-        display:none;
-    }
 }
 
 @media (max-width:520px){
     .main{
-        padding:14px;
+        padding:56px 14px 14px 14px;
     }
 
     .card{
@@ -877,60 +794,4 @@ body::after{
     .sidebar-logo{
         width:130px;
     }
-}
-.card-actions{
-    display:flex;
-    justify-content:flex-end;
-    margin-bottom:8px;
-}
-
-.pdf-chip{
-    display:inline-block;
-    padding:8px 12px;
-    border-radius:999px;
-    background:rgba(93,184,255,0.14);
-    color:#5db8ff;
-    text-decoration:none;
-    font-weight:800;
-    font-size:13px;
-}
-
-.pdf-chip:hover{
-    background:rgba(93,184,255,0.24);
-}
-
-.admin-overview-grid{
-    align-items:start;
-}
-
-.admin-fleet-card{
-    height:auto !important;
-    min-height:unset !important;
-}
-
-.sidebar-copy{
-    margin-top:10px;
-    text-align:center;
-    font-size:11px;
-    color:#b8c0cc;
-    line-height:1.4;
-}
-
-body.light-mode .sidebar-copy{
-    color:#475467;
-}
-
-.top-theme-switch{
-    position:absolute;
-    top:18px;
-    right:28px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    z-index:20;
-}
-
-.main{
-    position:relative;
-    padding-top:52px;
 }

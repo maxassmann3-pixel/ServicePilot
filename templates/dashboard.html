@@ -9,7 +9,7 @@
     </div>
 
     {% if current_fleet_id %}
-    <a href="/fleet-pdf/{{ current_fleet_id }}" target="_blank">
+    <a href="/fleet-pdf/{{ current_fleet_id }}">
         <button class="btn">Fuhrpark als PDF speichern</button>
     </a>
     {% endif %}
@@ -57,7 +57,7 @@
         <div class="machine-card-body">
 
             <div class="card-actions">
-                <a class="pdf-chip" href="/service-pdf/{{ m.id }}" target="_blank">⋮ PDF</a>
+                <a class="pdf-chip" href="/service-pdf/{{ m.id }}">PDF speichern</a>
             </div>
 
             {% if m.final_color == "red" %}
@@ -92,6 +92,7 @@
             {% if m.notes %}
             <div class="mini-note-list">
                 <strong>Notizen / Mängel:</strong>
+
                 {% for n in m.notes %}
                 <div class="mini-note">
                     {% if n.priority == "red" %}
@@ -101,6 +102,7 @@
                     {% else %}
                         🟢
                     {% endif %}
+
                     {{ n.text }}
 
                     {% if n.photo %}

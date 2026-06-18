@@ -2,6 +2,7 @@
 
 {% block content %}
 
+<!-- Hier werden neue Maschinen angelegt oder vorhandene bearbeitet. -->
 <div class="header">
     <div>
         <h1>Maschinen</h1>
@@ -46,6 +47,7 @@
             <option value="small_device" {% if edit_machine and edit_machine.type == "small_device" %}selected{% endif %}>Kleingerät</option>
         </select>
 
+        <!-- Diese Felder sind nur bei Fahrzeugen sinnvoll. -->
         <div id="vehicleFields">
             <label>Kennzeichen</label>
             <input name="license_plate" value="{{ edit_machine.license_plate if edit_machine else '' }}" placeholder="z. B. LÖ-AB 123">
@@ -82,6 +84,7 @@
 
 <br>
 
+<!-- Übersicht aller Maschinen als Sedcards. -->
 <div class="machine-card-grid">
     {% for m in machines %}
     <div class="machine-card">
@@ -95,6 +98,10 @@
         {% endif %}
 
         <div class="machine-card-body">
+            <div class="card-actions">
+                <a class="pdf-chip" href="/service-pdf/{{ m.id }}">PDF speichern</a>
+            </div>
+
             {% if m.final_color == "red" %}
                 <span class="status-red">🔴 Dringend</span>
             {% elif m.final_color == "yellow" %}
@@ -114,13 +121,10 @@
             {% endif %}
 
             <p><strong>Standort:</strong> {% if m.independent %}ortsunabhängig{% else %}{{ m.current_location }}{% endif %}</p>
+            <p><strong>Verantwortlicher:</strong> {{ m.responsible }}</p>
 
             <a href="/edit-machine/{{ m.id }}">
                 <button class="btn btn-small">Bearbeiten</button>
-            </a>
-
-            <a href="/service-pdf/{{ m.id }}">
-                <button class="btn btn-small">PDF</button>
             </a>
         </div>
     </div>

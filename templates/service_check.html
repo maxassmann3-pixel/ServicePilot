@@ -2,6 +2,7 @@
 
 {% block content %}
 
+<!-- Einzelansicht für die Werkstatt: hier wird jetzt wirklich der Service gemacht. -->
 <div class="header">
     <div>
         <h1>Service durchführen</h1>
@@ -43,6 +44,7 @@
     <div class="card">
         <h2>Wartungscheckliste</h2>
 
+        <!-- Jeder Punkt kann beim digitalen Service angeklickt werden. -->
         {% for item in checklist %}
         <div class="checkbox-row">
             <input type="checkbox" name="checklist" value="{{ item }}">

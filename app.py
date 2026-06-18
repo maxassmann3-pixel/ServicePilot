@@ -15,12 +15,13 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 
 app = Flask(__name__)
-app.secret_key = "servicepilot_postgres_v7"
+app.secret_key = "servicepilot_postgres_v8"
 
 ADMIN_PASSWORD = "admin123"
 BERLIN = ZoneInfo("Europe/Berlin")
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
+#  Voreinstellungen der Intervalle
 DEFAULT_SETTINGS = {
     "machine": 500,
     "vehicle": 15000,
@@ -28,11 +29,13 @@ DEFAULT_SETTINGS = {
     "small_device": 100
 }
 
+#  Voreinstellung User-Rechte
 DEFAULT_PERMISSIONS = {
     "create_machines": False,
     "send_reports": True,
     "do_service": False
 }
+
 
 CHECKLISTS = {
     "machine": [
@@ -104,12 +107,14 @@ CHECKLISTS = {
 
 
 def db():
+    # Öffnet eine Verbindung zur Render/PostgreSQL-Datenbank.
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL fehlt.")
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 
 def sql_fetchone(query, params=()):
+    # Holt genau einen Datensatz aus der Datenbank.
     with db() as conn:
         with conn.cursor() as cur:
             cur.execute(query, params)
@@ -117,6 +122,7 @@ def sql_fetchone(query, params=()):
 
 
 def sql_fetchall(query, params=()):
+    # Holt mehrere Datensätze aus der Datenbank.
     with db() as conn:
         with conn.cursor() as cur:
             cur.execute(query, params)
@@ -124,6 +130,7 @@ def sql_fetchall(query, params=()):
 
 
 def sql_execute(query, params=()):
+    # Führt Änderungen an der Datenbank durch.
     with db() as conn:
         with conn.cursor() as cur:
             cur.execute(query, params)
@@ -131,10 +138,12 @@ def sql_execute(query, params=()):
 
 
 def now_dt():
+    # Alle Zeiten werden in deutscher Zeitzone gespeichert/ausgegeben.
     return datetime.now(BERLIN)
 
 
 def hash_password(password):
+    # Passwörter werden niemals im Klartext gespeichert.
     return hashlib.sha256(password.encode()).hexdigest()
 
 
@@ -151,6 +160,7 @@ def current_fleet_id():
 
 
 def uploaded_image_to_data_url(file):
+    # Wandelt hochgeladene Bilder in speicherbare Base64-Bilder um.
     if not file or file.filename == "":
         return ""
 
@@ -165,6 +175,7 @@ def uploaded_image_to_data_url(file):
 
 
 def get_type_emoji(machine):
+    # Falls kein echtes Bild vorhanden ist, bekommt jede Kategorie ein Symbol.
     t = machine.get("type")
     if t == "vehicle":
         return "🚛"
@@ -176,6 +187,7 @@ def get_type_emoji(machine):
 
 
 def init_db():
+    # Erstellt alle Tabellen automatisch, falls sie noch nicht existieren.
     with db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -324,6 +336,7 @@ def get_fleet_name(fleet_id=None):
 
 def get_permissions(username=None):
     if is_admin():
+        #  Wenn Admin eingeloggt ist, kriegt er alle Rechte.
         return {
             "create_machines": True,
             "send_reports": True,
@@ -356,6 +369,7 @@ def no_permission(message):
 
 
 def log_action(action, details="", fleet_id=None):
+    # Admin-Aktivitäten werden bewusst nicht protokolliert.
     if current_user() == "Admin":
         return
 
@@ -384,11 +398,13 @@ def type_name(machine):
 
 
 def final_status(machine):
+    #  Berechnet Ampelfarbe aus Restlaufzeit und offenen Notizen.
     rest = float(machine["interval"]) - float(machine["current_value"])
 
     service_color = "green"
     if rest <= 0:
         service_color = "red"
+    #  Ab unter 50h Restlaufzeit wird´s gelb.
     elif rest <= 50:
         service_color = "yellow"
 
@@ -408,6 +424,7 @@ def final_status(machine):
 
 
 def attach_machine_fields(machines, notes_by_machine=None):
+    # Ergänzt Maschinen um Notizen, Einheit, Bild/Emoji und Status.
     order = {"red": 0, "yellow": 1, "green": 2}
 
     if notes_by_machine is None:
@@ -425,18 +442,15 @@ def attach_machine_fields(machines, notes_by_machine=None):
 
 
 def get_machines(fleet_id=None):
+    # Lädt Maschinen und Notizen gebündelt -> schneller.
     fid = fleet_id or current_fleet_id() or "default"
-
     machines = sql_fetchall("SELECT * FROM machines WHERE fleet_id = %s;", (fid,))
 
     if not machines:
         return []
 
     ids = [m["id"] for m in machines]
-    notes = sql_fetchall(
-        "SELECT * FROM notes WHERE machine_id = ANY(%s) ORDER BY id DESC;",
-        (ids,)
-    )
+    notes = sql_fetchall("SELECT * FROM notes WHERE machine_id = ANY(%s) ORDER BY id DESC;", (ids,))
 
     notes_by_machine = {}
     for n in notes:
@@ -446,16 +460,14 @@ def get_machines(fleet_id=None):
 
 
 def get_all_machines_for_admin():
+    # Admin-Dashboard lädt alle Maschinen auf einmal, damit die Seite schneller reagiert.
     machines = sql_fetchall("SELECT * FROM machines ORDER BY name ASC;")
 
     if not machines:
         return []
 
     ids = [m["id"] for m in machines]
-    notes = sql_fetchall(
-        "SELECT * FROM notes WHERE machine_id = ANY(%s) ORDER BY id DESC;",
-        (ids,)
-    )
+    notes = sql_fetchall("SELECT * FROM notes WHERE machine_id = ANY(%s) ORDER BY id DESC;", (ids,))
 
     notes_by_machine = {}
     for n in notes:
@@ -465,6 +477,7 @@ def get_all_machines_for_admin():
 
 
 def image_data_to_reportlab(data_url, max_width=4.5 * cm, max_height=3.2 * cm):
+    # Fügt hochgeladene Bilder in PDFs ein. Externe URLs werden bewusst nicht genutzt -> Urheberrecht.
     if not data_url or not str(data_url).startswith("data:image"):
         return ""
 
@@ -480,6 +493,7 @@ def image_data_to_reportlab(data_url, max_width=4.5 * cm, max_height=3.2 * cm):
 
 
 def pdf_footer(canvas, doc):
+    # Schwarzer Seitenrand und Seitenzahlen für .pdf-Datei.
     canvas.saveState()
     canvas.setStrokeColor(colors.black)
     canvas.setLineWidth(1)
@@ -489,39 +503,25 @@ def pdf_footer(canvas, doc):
     canvas.restoreState()
 
 
-def status_text(machine):
-    if machine["final_color"] == "red":
-        return "Rot / dringend"
-    if machine["final_color"] == "yellow":
-        return "Gelb / Achtung"
-    return "Grün / OK"
-
-
 def status_dot_table(machine):
-    if machine["final_color"] == "red":
-        dot_color = colors.HexColor("#ff6b6b")
-        text = "Rot / dringend"
-    elif machine["final_color"] == "yellow":
-        dot_color = colors.HexColor("#ffd166")
-        text = "Gelb / Achtung"
-    else:
-        dot_color = colors.HexColor("#6ee7a8")
-        text = "Grün / OK"
+    # Status wird im PDF als Emoji dargestellt.
+    styles = getSampleStyleSheet()
+    normal = styles["Normal"]
 
-    t = Table([["", text]], colWidths=[0.35 * cm, 4.5 * cm])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, 0), dot_color),
-        ("BOX", (0, 0), (0, 0), 0.5, dot_color),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
-    return t
+    if machine["final_color"] == "red":
+        return Paragraph("🔴 Rot / dringend", normal)
+    if machine["final_color"] == "yellow":
+        return Paragraph("🟡 Gelb / Achtung", normal)
+    return Paragraph("🟢 Grün / OK", normal)
 
 
 def checkbox_paragraph(text, style):
-    return Paragraph(f"□ {text}", style)
+    # Unicode-Kästchen für Papierausdruck. Mitarbeiter können es später mit Stift abhaken.
+    return Paragraph(f"☐ {text}", style)
 
 
 def build_fleet_pdf(fleet, machines):
+    # Erstellt einen kompakten Fuhrparkbericht mit kleinen Sedcards.
     buffer = BytesIO()
 
     doc = SimpleDocTemplate(
@@ -535,7 +535,6 @@ def build_fleet_pdf(fleet, machines):
 
     styles = getSampleStyleSheet()
     normal = styles["Normal"]
-
     story = []
 
     logo = image_data_to_reportlab(fleet.get("profile_image"), 3.0 * cm, 2.0 * cm)
@@ -549,7 +548,7 @@ def build_fleet_pdf(fleet, machines):
 
     header.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP")
     ]))
 
     story.append(header)
@@ -560,10 +559,9 @@ def build_fleet_pdf(fleet, machines):
         stand_label = "Kilometerstand" if m["type"] == "vehicle" else "Betriebsstundenstand"
         unit_text = "km" if m["type"] == "vehicle" else "h"
 
-        img = image_data_to_reportlab(m.get("image_url"), 2.6 * cm, 2.0 * cm)
-
+        img = image_data_to_reportlab(m.get("image_url"), 2.4 * cm, 1.8 * cm)
         if not img:
-            img = Paragraph(f"<font size='28'>{m.get('emoji', '🚜')}</font>", normal)
+            img = Paragraph(f"<font size='24'>{m.get('emoji', '🚜')}</font>", normal)
 
         details = [
             Paragraph(f"<b>{m['name']}</b>", normal),
@@ -575,21 +573,19 @@ def build_fleet_pdf(fleet, machines):
             Paragraph(f"Verantwortlicher: {m.get('responsible', '')}", normal)
         ]
 
-        data = [[img, details]]
-
-        table = Table(data, colWidths=[3.0 * cm, 13.0 * cm])
+        table = Table([[img, details]], colWidths=[2.8 * cm, 13.2 * cm])
         table.setStyle(TableStyle([
             ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f5f7fa")),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f7f9fc")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]))
 
         story.append(table)
-        story.append(Spacer(1, 0.22 * cm))
+        story.append(Spacer(1, 0.18 * cm))
 
     doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
     buffer.seek(0)
@@ -597,6 +593,7 @@ def build_fleet_pdf(fleet, machines):
 
 
 def build_service_pdf(machine):
+    # Erstellt die druckbare Servicekarte für eine einzelne Maschine.
     buffer = BytesIO()
 
     doc = SimpleDocTemplate(
@@ -610,7 +607,6 @@ def build_service_pdf(machine):
 
     styles = getSampleStyleSheet()
     normal = styles["Normal"]
-
     story = []
 
     fleet = sql_fetchone("SELECT * FROM fleets WHERE id = %s;", (machine["fleet_id"],))
@@ -634,16 +630,14 @@ def build_service_pdf(machine):
     story.append(Spacer(1, 0.35 * cm))
 
     img = image_data_to_reportlab(machine.get("image_url"), 7.5 * cm, 4.0 * cm)
-
     if img:
         story.append(img)
     else:
-        story.append(Paragraph(f"<font size='42'>{machine.get('emoji', '🚜')}</font>", normal))
+        story.append(Paragraph(f"<font size='38'>{machine.get('emoji', '🚜')}</font>", normal))
 
     story.append(Spacer(1, 0.25 * cm))
-
     story.append(status_dot_table(machine))
-    story.append(Spacer(1, 0.2 * cm))
+    story.append(Spacer(1, 0.25 * cm))
 
     story.append(Paragraph(f"<b>Art:</b> {machine['type_name']}", normal))
     story.append(Paragraph(f"<b>Standort:</b> {machine.get('current_location', '')}", normal))
@@ -669,19 +663,19 @@ def build_service_pdf(machine):
     else:
         story.append(Paragraph("Keine offenen Mängel vorhanden.", normal))
 
-    story.append(Spacer(1, 1.0 * cm))
-    story.append(Paragraph("<b>Bestätigung Service erledigt:</b>", styles["Heading2"]))
+    story.append(Spacer(1, 1.4 * cm))
 
     sign_table = Table([
-        ["Datum", "Ort", "Unterschrift Mitarbeiter"],
-        ["", "", ""]
-    ], colWidths=[4.5 * cm, 4.5 * cm, 7 * cm])
+        ["______________________________", "______________________________"],
+        ["Ort, Datum", "Unterschrift"]
+    ], colWidths=[8 * cm, 8 * cm])
 
     sign_table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.8, colors.black),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeee")),
-        ("ROWHEIGHT", (0, 1), (-1, 1), 1.2 * cm),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 11),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
 
     story.append(sign_table)
@@ -692,6 +686,7 @@ def build_service_pdf(machine):
 
 
 def load_old_json_machines():
+    # Importiert alte lokale JSON-Daten, falls man Programm neu mit Demo-Daten generieren will.
     if not os.path.exists("data.json"):
         return []
 
@@ -711,6 +706,7 @@ def load_old_json_machines():
 
 
 def clear_entire_program():
+    # Löscht alles und legt danach einen leeren Standard-Fuhrpark an.
     sql_execute("DELETE FROM notes;")
     sql_execute("DELETE FROM histories;")
     sql_execute("DELETE FROM activities;")
@@ -726,6 +722,7 @@ def clear_entire_program():
 
 @app.before_request
 def check_force_logout():
+    # Prüft bei jedem Seitenaufruf, ob ein Nutzer vom Admin rausgeworfen wurde, wenn ja, kommt er nicht rein.
     if "user" in session and not is_admin():
         row = sql_fetchone("SELECT force_token FROM users WHERE username = %s;", (session["user"],))
         if row and session.get("force_token") != row["force_token"]:
@@ -737,6 +734,7 @@ def check_force_logout():
 
 @app.context_processor
 def inject_global_data():
+    # Die Werte stehen in allen Seiten zur Verfügung.
     return {
         "fleet_name": get_fleet_name(),
         "permissions": get_permissions() if "user" in session else {},
@@ -755,6 +753,7 @@ def login_page():
 
 @app.route("/toggle-theme", methods=["POST"])
 def toggle_theme():
+    # Speichert hell/dunkel dauerhaft im Cookie und zusätzlich in der Session.
     current = session.get("theme", request.cookies.get("theme", "dark"))
     new_theme = "light" if current == "dark" else "dark"
     session["theme"] = new_theme
@@ -819,6 +818,7 @@ def admin_login():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+        #  Neuanlegung Nutzer-Account.
         username = request.form["username"]
         password = request.form["password"]
 
@@ -1206,6 +1206,7 @@ def service_done(machine_id):
 
 @app.route("/fleet-pdf/<fleet_id>")
 def fleet_pdf(fleet_id):
+    # PDF wird als Download gesendet, damit die App-Seite offen bleibt.
     if "user" not in session:
         return redirect("/")
 
@@ -1219,11 +1220,17 @@ def fleet_pdf(fleet_id):
     machines = get_machines(fleet_id)
     pdf = build_fleet_pdf(fleet, machines)
 
-    return send_file(pdf, mimetype="application/pdf", as_attachment=False, download_name=f"Fuhrpark_{fleet['name']}.pdf")
+    return send_file(
+        pdf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"Fuhrpark_{fleet['name']}.pdf"
+    )
 
 
 @app.route("/service-pdf/<machine_id>")
 def service_pdf(machine_id):
+    # PDF wird als Download gesendet, damit kein Zurückklicken nötig ist.
     if "user" not in session:
         return redirect("/")
 
@@ -1240,7 +1247,12 @@ def service_pdf(machine_id):
 
     pdf = build_service_pdf(machine)
 
-    return send_file(pdf, mimetype="application/pdf", as_attachment=False, download_name=f"Servicekarte_{machine['name']}.pdf")
+    return send_file(
+        pdf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"Servicekarte_{machine['name']}.pdf"
+    )
 
 
 @app.route("/admin")

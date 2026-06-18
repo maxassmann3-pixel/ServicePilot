@@ -19,7 +19,7 @@
                 <p>{{ item.total }} Einträge im Fuhrpark</p>
             </div>
 
-            <a href="/fleet-pdf/{{ item.fleet.id }}" target="_blank">
+            <a href="/fleet-pdf/{{ item.fleet.id }}">
                 <button class="btn btn-small">Fuhrpark als PDF</button>
             </a>
         </div>
@@ -67,8 +67,9 @@
             </div>
 
             <div class="admin-machine-info">
+
                 <div class="card-actions">
-                    <a class="pdf-chip" href="/service-pdf/{{ m.id }}" target="_blank">⋮ PDF</a>
+                    <a class="pdf-chip" href="/service-pdf/{{ m.id }}">PDF speichern</a>
                 </div>
 
                 {% if m.final_color == "red" %}

@@ -1,13 +1,15 @@
+// Kleiner Ladebildschirm: wird bewusst kurz gehalten, damit die App schneller wirkt.
 window.addEventListener("load", function(){
     const splash = document.getElementById("splash");
 
     if(splash){
         setTimeout(function(){
             splash.style.opacity = "0";
+
             setTimeout(function(){
                 splash.style.display = "none";
-            }, 180);
-        }, 180);
+            }, 160);
+        }, 160);
     }
 
     if(typeof updateTypeFields === "function"){
@@ -19,6 +21,8 @@ window.addEventListener("load", function(){
     }
 });
 
+
+// Blendet beim Tagesbericht die Felder für Standortwechsel ein oder aus.
 function toggleLocationChange(){
     const checkbox = document.getElementById("location_change");
     const box = document.getElementById("location-change-box");
@@ -28,6 +32,8 @@ function toggleLocationChange(){
     }
 }
 
+
+// Bei Fahrzeugen werden Kennzeichen und TÜV angezeigt, bei Maschinen nicht zwingend.
 function updateTypeFields(){
     const typeSelect = document.getElementById("typeSelect");
     const vehicleFields = document.getElementById("vehicleFields");
