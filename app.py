@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, send_file, make_response
 import os, hashlib, time, secrets, base64, json
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from io import BytesIO
 
@@ -138,8 +138,30 @@ def sql_execute(query, params=()):
 
 
 def now_dt():
-    # Alle Zeiten werden in deutscher Zeitzone gespeichert/ausgegeben.
-    return datetime.now(BERLIN)
+    # Speichert Zeiten sauber in UTC. Angezeigt wird später deutsche Zeit.
+    return datetime.now(timezone.utc)
+
+
+def format_berlin_time(dt):
+    # Macht aus gespeicherter UTC-Zeit deutsche Uhrzeit.
+    if not dt:
+        return ""
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(BERLIN).strftime("%H:%M:%S")
+
+
+def format_berlin_datetime(dt=None):
+    # Für PDFs: deutsches Datum + deutsche Uhrzeit.
+    if dt is None:
+        dt = datetime.now(timezone.utc)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(BERLIN).strftime("%d.%m.%Y %H:%M:%S")
 
 
 def hash_password(password):
@@ -515,9 +537,17 @@ def status_dot_table(machine):
     return Paragraph("🟢 Grün / OK", normal)
 
 
-def checkbox_paragraph(text, style):
-    # Unicode-Kästchen für Papierausdruck. Mitarbeiter können es später mit Stift abhaken.
-    return Paragraph(f"☐ {text}", style)
+def checkbox_row(text, style):
+    # Echtes leeres Kästchen für Papierausdruck.
+    box = Table([[""]], colWidths=[0.35 * cm], rowHeights=[0.35 * cm])
+    box.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.8, colors.black),
+    ]))
+
+    return Table(
+        [[box, Paragraph(text, style)]],
+        colWidths=[0.55 * cm, 14.5 * cm]
+    )
 
 
 def build_fleet_pdf(fleet, machines):
@@ -626,10 +656,10 @@ def build_service_pdf(machine):
 
     story.append(header)
     story.append(Paragraph(f"Ausgedruckt von: {current_user()}", normal))
-    story.append(Paragraph(f"Erstellt am: {now_dt().strftime('%d.%m.%Y %H:%M:%S')} Uhr", normal))
+    story.append(Paragraph(f"Erstellt am: {format_berlin_datetime()} Uhr", normal))
     story.append(Spacer(1, 0.35 * cm))
 
-    img = image_data_to_reportlab(machine.get("image_url"), 7.5 * cm, 4.0 * cm)
+    img = image_data_to_reportlab(machine.get("image_url"), 7.5 * cm, 9.0 * cm)
     if img:
         story.append(img)
     else:
@@ -648,15 +678,15 @@ def build_service_pdf(machine):
 
     checklist = CHECKLISTS.get(machine.get("type", "machine"), CHECKLISTS["machine"])
     for item in checklist:
-        story.append(checkbox_paragraph(item, normal))
+        story.append(checkbox_row(item, normal))
 
     story.append(Spacer(1, 0.35 * cm))
     story.append(Paragraph("<b>Offene Mängel / Notizen:</b>", styles["Heading2"]))
 
     if machine.get("notes"):
         for n in machine["notes"]:
-            story.append(checkbox_paragraph(f"{n.get('priority', '')}: {n.get('text', '')}", normal))
-            note_img = image_data_to_reportlab(n.get("photo"), 8 * cm, 4 * cm)
+            story.append(checkbox_row(f"{n.get('priority', '')}: {n.get('text', '')}", normal))
+            note_img = image_data_to_reportlab(n.get("photo"), 8 * cm, 9 * cm)
             if note_img:
                 story.append(note_img)
                 story.append(Spacer(1, 0.15 * cm))
@@ -1439,11 +1469,24 @@ def admin_activity():
     users = sql_fetchall("SELECT username FROM users ORDER BY username ASC;")
 
     if filter_user:
-        logs = sql_fetchall("SELECT * FROM activities WHERE username=%s ORDER BY created_at DESC;", (filter_user,))
+        logs = sql_fetchall(
+            "SELECT * FROM activities WHERE username=%s ORDER BY created_at DESC;",
+            (filter_user,)
+        )
     else:
-        logs = sql_fetchall("SELECT * FROM activities ORDER BY created_at DESC LIMIT 500;")
+        logs = sql_fetchall(
+            "SELECT * FROM activities ORDER BY created_at DESC LIMIT 500;"
+        )
 
-    return render_template("admin_activity.html", logs=logs, users=users, filter_user=filter_user)
+    for log in logs:
+        log["time_only"] = format_berlin_time(log.get("created_at"))
+
+    return render_template(
+        "admin_activity.html",
+        logs=logs,
+        users=users,
+        filter_user=filter_user
+    )
 
 
 @app.route("/settings", methods=["GET", "POST"])
