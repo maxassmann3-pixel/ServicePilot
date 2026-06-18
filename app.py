@@ -667,7 +667,7 @@ def build_service_pdf(machine):
 
     sign_table = Table([
         ["______________________________", "______________________________"],
-        ["Ort, Datum", "Unterschrift"]
+        ["Ort, Datum", "Unterschrift Werkstattmitarbeiter"]
     ], colWidths=[8 * cm, 8 * cm])
 
     sign_table.setStyle(TableStyle([
@@ -1224,13 +1224,13 @@ def fleet_pdf(fleet_id):
         pdf,
         mimetype="application/pdf",
         as_attachment=True,
-        download_name=f"Fuhrpark_{fleet['name']}.pdf"
+        download_name=f"{fleet['name']}.pdf"
     )
 
 
 @app.route("/service-pdf/<machine_id>")
 def service_pdf(machine_id):
-    # PDF wird als Download gesendet, damit kein Zurückklicken nötig ist.
+    # PDF wird als Download gesendet.
     if "user" not in session:
         return redirect("/")
 
@@ -1251,9 +1251,8 @@ def service_pdf(machine_id):
         pdf,
         mimetype="application/pdf",
         as_attachment=True,
-        download_name=f"Servicekarte_{machine['name']}.pdf"
+        download_name=f"{machine['name']}.pdf"
     )
-
 
 @app.route("/admin")
 def admin():

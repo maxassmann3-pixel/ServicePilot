@@ -4,19 +4,20 @@
 
 <div class="header">
     <div>
-        <h1>Aktivitätsverlauf</h1>
-        <p>Änderungen nach Nutzer filtern und Verlauf zurücksetzen.</p>
+        <h1>Aktivitäten</h1>
+        <p>Änderungsverlauf nach Nutzern nachvollziehen.</p>
     </div>
 </div>
 
 <div class="card">
-    <form method="get" class="filter-box">
+    <form method="get" action="/admin/activity" class="filter-box">
+        <label>Nutzer filtern</label>
         <select name="user">
             <option value="">Alle Nutzer</option>
-            {% for user in users %}
-            <option value="{{ user.username }}" {% if filter_user == user.username %}selected{% endif %}>
-                {{ user.username }}
-            </option>
+            {% for u in users %}
+                <option value="{{ u.username }}" {% if filter_user == u.username %}selected{% endif %}>
+                    {{ u.username }}
+                </option>
             {% endfor %}
         </select>
 
@@ -26,8 +27,8 @@
 
 <br>
 
-<div class="card danger-card">
-    <form method="post">
+<div class="card">
+    <form method="post" action="/admin/activity">
         <input type="hidden" name="action" value="clear_activity">
         <button class="btn btn-red">Aktivitäten zurücksetzen</button>
     </form>
@@ -35,17 +36,26 @@
 
 <br>
 
-<div class="card">
-    <h2>Verlauf</h2>
-
+<div class="activity-list">
     {% for log in logs %}
-    <div class="admin-log-card">
-        <strong>{{ log.created_at }} – {{ log.username }}</strong>
-        <div>{{ log.action }}</div>
-        <div class="admin-detail">
-            Fuhrpark: {{ log.fleet_name }}<br>
+    <div class="activity-card">
+        <div class="activity-top">
+            <strong>{{ log.action }}</strong>
+            <span>{{ log.created_at.strftime('%H:%M:%S') }}</span>
+        </div>
+
+        <div class="activity-meta">
+            Nutzer: <strong>{{ log.username }}</strong>
+            {% if log.fleet_name %}
+                · Fuhrpark: <strong>{{ log.fleet_name }}</strong>
+            {% endif %}
+        </div>
+
+        {% if log.details %}
+        <div class="activity-details">
             {{ log.details }}
         </div>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
